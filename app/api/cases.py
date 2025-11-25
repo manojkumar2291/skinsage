@@ -1,0 +1,45 @@
+from fastapi import APIRouter, Depends
+from typing import List
+from app.schemas.case import CaseCreate, CaseResponse, CaseStatusUpdate
+from app.services.case_service import CaseService
+from app.core.deps import get_current_user
+
+router = APIRouter()
+service = CaseService()
+
+# 1. Create new case
+@router.post("/cases", response_model=CaseResponse)
+def create_case(
+    data: CaseCreate, 
+    current_user: dict = Depends(get_current_user)
+):
+    # Pass user_id from the token
+    return service.create_case(user_id=current_user['id'], data=data)
+
+# 2. List cases for the logged-in user
+@router.get("/cases", response_model=List[CaseResponse])
+def list_cases(current_user: dict = Depends(get_current_user)):
+    return service.list_user_cases(user_id=current_user['id'])
+
+# 3. Get Case Details
+@router.get("/cases/{case_id}", response_model=CaseResponse)
+def get_case(case_id: int, current_user: dict = Depends(get_current_user)):
+    return service.get_case_details(
+        case_id=case_id, 
+        user_id=current_user['id'], 
+        user_role=current_user.get('role', 'user')
+    )
+
+# 4. Update Case Status
+@router.patch("/cases/{case_id}/status")
+def update_status(
+    case_id: int, 
+    data: CaseStatusUpdate, 
+    current_user: dict = Depends(get_current_user)
+):
+    return service.update_case_status(
+        case_id=case_id, 
+        status=data.status, 
+        user_id=current_user['id'],
+        user_role=current_user.get('role', 'user')
+    )

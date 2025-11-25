@@ -1,0 +1,54 @@
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+*.pdb
+*.pkl
+*.sqlite3
+
+# Environments
+.env
+venv/
+.venv/
+ENV/
+env/
+*.env
+
+# VSCode
+.vscode/
+.settings/
+
+# FastAPI uploads
+uploads/
+media/
+static/
+
+# Bytecode
+*.log
+*.pot
+*.pycache/
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Pytest / coverage
+.pytest_cache/
+.coverage
+htmlcov/
+
+# MySQL dumps
+#*.sql
+!tables.sql  # allow your schema file
+
+# Node modules (if any frontend inside project)
+node_modules/
+
+# Build
+dist/
+build/
+
+# Git
+*.swp
+*.swo
