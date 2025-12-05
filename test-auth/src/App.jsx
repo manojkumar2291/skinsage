@@ -12,6 +12,7 @@ import Dashboard from './pages/Dashboard';
 import AIAnalysis from './pages/AIAnalysis';
 import CreateCase from './pages/CreateCase';
 import MyCases from './pages/MyCases';
+import CaseDetails from './pages/CaseDetails';
 import FindProvider from './pages/FindProvider';
 import BookAppointment from './pages/BookAppointment';
 import VisitHistory from './pages/VisitHistory';
@@ -43,13 +44,14 @@ const App = () => {
               <Route path="/complete-profile" element={<CompleteProfile />} />
               <Route path="/ai-analysis" element={<AIAnalysis />} />
               <Route path="/cases" element={<MyCases />} />
+              <Route path="/cases/:caseId" element={<CaseDetails />} />
               <Route path="/create-case" element={<CreateCase />} />
               <Route path="/find-provider" element={<FindProvider />} />
               <Route path="/book-appointment/:providerId" element={<BookAppointment />} />
               <Route path="/visit-history" element={<VisitHistory />} />
-              <Route path="/visit/:visitId" element={<PatientVisitDetails />} />
+              <Route path="/patient/visit/:visitId" element={<PatientVisitDetails />} />
               <Route path="/provider/visit-summary/:visitId" element={<ProviderVisitSummary />} />
-              <Route path="/video-call/:channelName" element={<VideoCall />} />
+              <Route path="/video-call/:appointmentId" element={<VideoCall />} />
               <Route path="/chat/:visitId" element={<ChatInterface />} />
               <Route path="/content-management" element={<ContentManagement />} />
             </Route>
