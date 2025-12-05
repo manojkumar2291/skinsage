@@ -1,0 +1,123 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Razorpay Payment Test</title>
+    <script src="https://checkout.razorpay.com/v1/checkout.js"></script>
+    <style>
+        body { font-family: sans-serif; padding: 50px; text-align: center; }
+        button { padding: 10px 20px; font-size: 16px; cursor: pointer; background-color: #3399cc; color: white; border: none; border-radius: 4px; }
+        #status { margin-top: 20px; font-weight: bold; }
+        .error { color: red; }
+        .success { color: green; }
+    </style>
+</head>
+<body>
+
+    <h2>Test Razorpay Payment Flow</h2>
+    <p>Make sure your FastAPI backend is running on <b>http://localhost:8000</b></p>
+    
+    <button id="pay-btn" onclick="startPayment()">Pay ₹500</button>
+
+    <div id="status"></div>
+
+    <script>
+        async function startPayment() {
+            const statusDiv = document.getElementById('status');
+            statusDiv.textContent = "Creating Order...";
+            statusDiv.className = "";
+
+            try {
+                // 1. Call Backend to Create Order
+                const response = await fetch('http://localhost:8000/api/payments/create-order', {
+                    method: 'POST',
+                    headers: { 
+                        'Content-Type': 'application/json',
+                        // Add Authorization header if your endpoint is protected:
+                        'Authorization': 'Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6MiwiZW1haWwiOiJtYW5vakBleGFtcGxlLmNvbSIsInJvbGUiOiJwYXRpZW50IiwiZXhwIjoxNzY0MzIwNTI1fQ.U9ZTMuyiywAoVGYPM-rdd1RQYewuRSQaW2mWY1AoobY' 
+                    },
+                    body: JSON.stringify({
+                        amount: 500, 
+                        currency: "INR",
+                        appointment_id: "1" // Dummy ID for testing
+                    })
+                });
+
+                if (!response.ok) throw new Error("Failed to create order");
+                
+                const orderData = await response.json();
+                console.log("Order Created:", orderData);
+
+                // 2. Open Razorpay Options
+                const options = {
+                    "key": orderData.key_id, // Key ID from Backend
+                    "amount": orderData.amount * 100,
+                    "currency": orderData.currency,
+                    "name": "Test Company",
+                    "description": "Test Transaction",
+                    "order_id": orderData.order.id, // Order ID from Backend
+                    "handler": async function (response){
+                        statusDiv.textContent = "Payment successful! Verifying...";
+                        console.log("Full response:", JSON.stringify(response));
+
+                        console.log("Razorpay Response:", response);
+                        
+                        // 3. Verify Payment on Backend
+                        await verifyPayment(response);
+                    },
+                    "prefill": {
+                        "name": "Test User",
+                        "email": "test@example.com",
+                        "contact": "9999999999"
+                    },
+                    "theme": { "color": "#3399cc" }
+                };
+
+                const rzp1 = new Razorpay(options);
+                rzp1.open();
+                
+                rzp1.on('payment.failed', function (response){
+                    console.error(response.error);
+                    statusDiv.textContent = "Payment Failed: " + response.error.description;
+                    statusDiv.className = "error";
+                });
+
+            } catch (error) {
+                console.error(error);
+                statusDiv.textContent = "Error: " + error.message;
+                statusDiv.className = "error";
+            }
+        }
+
+        async function verifyPayment(paymentDetails) {
+            const statusDiv = document.getElementById('status');
+            try {
+                const response = await fetch('http://localhost:8000/api/payments/verify', {
+                    method: 'POST',
+                    headers: { 
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        razorpay_order_id: paymentDetails.razorpay_order_id,
+                        razorpay_payment_id: paymentDetails.razorpay_payment_id,
+                        razorpay_signature: paymentDetails.razorpay_signature
+                    })
+                });
+
+                const result = await response.json();
+                if (response.ok) {
+                    statusDiv.textContent = "Success! Payment Verified by Backend.";
+                    statusDiv.className = "success";
+                } else {
+                    statusDiv.textContent = "Verification Failed: " + result.detail;
+                    statusDiv.className = "error";
+                }
+            } catch (error) {
+                statusDiv.textContent = "Verification Error: " + error.message;
+                statusDiv.className = "error";
+            }
+        }
+    </script>
+</body>
+</html>

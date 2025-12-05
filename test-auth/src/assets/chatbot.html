@@ -1,0 +1,560 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Skin/Hair Issue Chatbot</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #f4f7f6; display: flex; justify-content: center; align-items: center; min-height: 100vh; padding: 20px; }
+        .chat-container { width: 100%; max-width: 650px; background-color: white; box-shadow: 0 8px 24px rgba(0,0,0,0.15); border-radius: 12px; overflow: hidden; display: flex; flex-direction: column; height: 90vh; max-height: 800px; }
+        .chat-header { background-color: #007bff; color: white; padding: 15px 20px; text-align: center; font-size: 1.1em; font-weight: 600; }
+        .chat-box { flex-grow: 1; padding: 20px; overflow-y: auto; background-color: #e9ecef; scroll-behavior: smooth; }
+        .message { margin-bottom: 15px; display: flex; animation: fadeIn 0.3s ease-out; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+        .bot { justify-content: flex-start; }
+        .user { justify-content: flex-end; }
+        .message-content { padding: 12px 18px; border-radius: 18px; max-width: 85%; line-height: 1.5; font-size: 0.95em; }
+        .bot .message-content { background-color: #d1e7dd; color: #0f5132; border-bottom-left-radius: 4px; }
+        .user .message-content { background-color: #007bff; color: white; border-bottom-right-radius: 4px; }
+        .status-message { color: #888; text-align: center; padding: 5px; font-size: 0.85em; font-style: italic; }
+        
+        .input-area { padding: 15px; border-top: 1px solid #ddd; background-color: white; display: flex; flex-direction: column; }
+        
+        /* Selection and Image Controls */
+        #selection-input-container {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+        .selection-button {
+            padding: 10px 15px;
+            border: 1px solid #007bff;
+            background-color: white;
+            color: #007bff;
+            border-radius: 6px;
+            cursor: pointer;
+            text-align: left;
+            transition: all 0.2s ease;
+        }
+        .selection-button:hover:not(:disabled) {
+            background-color: #007bff;
+            color: white;
+            transform: translateY(-1px);
+            box-shadow: 0 0 8px rgba(0, 123, 255, 0.4);
+        }
+        .selection-button:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+        }
+
+        /* Initial Setup Dropdowns */
+        #initial-selection-container {
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+        }
+        .select-group {
+            display: flex;
+            flex-direction: column;
+            gap: 5px;
+        }
+
+        .select-group select {
+            padding: 10px;
+            border: 1px solid #ccc;
+            border-radius: 6px;
+            font-size: 1em;
+        }
+        
+        #start-button {
+            padding: 12px 20px;
+            background-color: #28a745;
+            color: white;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-weight: 600;
+            transition: background-color 0.2s;
+        }
+        #start-button:hover:not(:disabled) {
+            background-color: #218838;
+        }
+        #start-button:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+        }
+
+        #image-upload-row { 
+            display: none; 
+            padding: 10px 0; 
+            border-top: 1px solid #eee; 
+            flex-direction: column;
+            gap: 10px;
+        }
+        
+        #upload-button { 
+            background-color: #007bff;
+            color: white; 
+            padding: 10px 15px; 
+            border: none; 
+            border-radius: 6px;
+            cursor: pointer;
+            transition: background-color 0.2s;
+        }
+        #upload-button:hover:not(:disabled) {
+            background-color: #0056b3;
+        }
+
+        .upload-label { 
+            padding: 10px 15px; 
+            border: 1px solid #007bff; 
+            color: #007bff; 
+            border-radius: 6px; 
+            cursor: pointer;
+            transition: background-color 0.2s;
+            text-align: center;
+        }
+        .upload-label:hover {
+            background-color: #e6f0ff;
+        }
+        
+        #image-preview-container {
+            display: flex;
+            gap: 10px;
+            min-height: 80px;
+            align-items: center;
+            justify-content: flex-start;
+        }
+        .image-preview-thumb { 
+            width: 80px; 
+            height: 80px; 
+            object-fit: cover;
+            border-radius: 4px; 
+            border: 2px solid #007bff;
+            display: none;
+            opacity: 0.9;
+        }
+        
+        .upload-controls {
+            display: flex;
+            justify-content: flex-end;
+            align-items: center;
+            gap: 10px;
+            width: 100%;
+        }
+
+        /* Final Action Buttons Styling */
+        #final-actions-row {
+            display: flex;
+            justify-content: space-between;
+            gap: 10px;
+            padding-top: 15px; 
+            border-top: 1px solid #ddd;
+        }
+        #book-appointment-button, #start-new-chat-button {
+            padding: 12px 15px;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-weight: 600;
+            transition: all 0.2s ease;
+            text-align: center;
+        }
+
+        #book-appointment-button {
+            background-color: #dc3545;
+            color: white;
+            flex-grow: 1; 
+        }
+        #book-appointment-button:hover {
+            background-color: #c82333;
+            transform: translateY(-1px);
+            box-shadow: 0 2px 5px rgba(220, 53, 69, 0.3);
+        }
+
+        #start-new-chat-button {
+            background-color: #17a2b8;
+            color: white;
+            flex-grow: 1;
+        }
+        #start-new-chat-button:hover {
+            background-color: #138496;
+            transform: translateY(-1px);
+            box-shadow: 0 2px 5px rgba(23, 162, 184, 0.3);
+        }
+
+    </style>
+</head>
+<body>
+    <div class="chat-container">
+        <div class="chat-header">Skin & Hair Issue Analyzer</div>
+
+        <div class="chat-box" id="chat-box">
+            <!-- Messages go here -->
+        </div>
+
+        <div class="input-area">
+            
+            <!-- STEP 1: Initial Selection (Dropdowns) -->
+            <div id="initial-selection-container">
+                <div class="select-group">
+                    <label for="issue-category">Select Issue Category:</label>
+                    <select id="issue-category">
+                        <option value="">-- Choose Category --</option>
+                        <option value="skin">Skin Issue</option>
+                        <option value="hair">Hair Issue</option>
+                    </select>
+                </div>
+                <div class="select-group" id="condition-group" style="display: none;">
+                    <label for="condition-type">Select Specific Condition:</label>
+                    <select id="condition-type">
+                        <option value="">-- Choose Condition --</option>
+                    </select>
+                </div>
+                <button id="start-button" onclick="startDiagnosis()" disabled>
+                    Start Diagnosis
+                </button>
+            </div>
+
+            <!-- STEP 2: Option-Based Chat (Buttons) -->
+            <div id="selection-input-container" style="display: none;">
+                <!-- Buttons for diagnostic questions will be dynamically loaded here -->
+            </div>
+
+            <!-- STEP 3: Image Upload -->
+            <div id="image-upload-row">
+                <div id="image-preview-container">
+                    <!-- Image previews will be dynamically inserted here -->
+                </div>
+                <div class="upload-controls">
+                    <input type="file" id="image-file" accept="image/*" multiple onchange="previewImages(event)" style="display: none;">
+                    <label for="image-file" class="upload-label">Select Images (Max 3)</label>
+                    <button id="upload-button" onclick="uploadImage()" disabled>Analyze Images</button>
+                </div>
+            </div>
+
+            <!-- STEP 4: Final Actions -->
+            <div id="final-actions-row" style="display: none;">
+                <button id="book-appointment-button" onclick="bookAppointment()" style="display: none;">
+                    Book Appointment Now
+                </button>
+                <button id="start-new-chat-button" onclick="startNewConversation()">
+                    Start New Conversation
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // DOM Elements
+        const chatBox = document.getElementById('chat-box');
+        const initialSelectionContainer = document.getElementById('initial-selection-container');
+        const selectionInputContainer = document.getElementById('selection-input-container');
+        const imageUploadRow = document.getElementById('image-upload-row');
+        const imageFileInput = document.getElementById('image-file');
+        const uploadButton = document.getElementById('upload-button');
+        const imagePreviewContainer = document.getElementById('image-preview-container');
+        const issueCategory = document.getElementById('issue-category');
+        const conditionGroup = document.getElementById('condition-group');
+        const conditionType = document.getElementById('condition-type');
+        const startButton = document.getElementById('start-button');
+        
+        // NEW ELEMENTS
+        const finalActionsRow = document.getElementById('final-actions-row');
+        const bookAppointmentButton = document.getElementById('book-appointment-button');
+        const startNewChatButton = document.getElementById('start-new-chat-button');
+        
+        const MAX_IMAGES = 3; 
+
+        // State
+        let messagesHistory = [];
+        let conversationStage = 'selection'; 
+        let currentQuestionStep = 0;
+        let selectedFiles = []; 
+        
+        // Final summary will be stored here
+        let qnaSummary = {}; 
+
+        // --- Local Question Data ---
+        const diagnosticQuestions = [
+            {
+                prompt: "What is the approximate duration of the issue? (e.g., when did you first notice it)",
+                options: ["Less than 1 week", "1 to 4 weeks", "1 to 6 months", "More than 6 months"],
+                key: "duration"
+            },
+            {
+                prompt: "How would you describe the severity or discomfort level?",
+                options: ["Mild (barely noticeable)", "Moderate (interferes sometimes)", "Severe (interferes significantly)", "Painful and debilitating"],
+                key: "severity"
+            },
+            {
+                prompt: "What is the main symptom besides the visual appearance?",
+                options: ["Itching", "Burning/Stinging", "Pain", "Dryness/Flakiness", "No major symptom"],
+                key: "symptom"
+            },
+            {
+                prompt: "Have you tried any treatments (creams, medication) for this issue, and did they help?",
+                options: ["No prior treatments", "Over-the-counter treatment (helped)", "Over-the-counter treatment (no help)", "Prescription treatment (helped)", "Prescription treatment (no help)"],
+                key: "treatment"
+            }
+        ];
+        
+        const conditionOptions = {
+            skin: [
+                'Rash', 'Acne / Pimples', 'Eczema', 'Psoriasis', 'Dermatitis', 
+                'Hives / Urticaria', 'Fungal Infection', 'Moles / Dark Spots', 
+                'Burns / Wounds', 'Swelling / Inflammation', 'Skin Discoloration', 
+                'Warts', 'Dry / Flaky Skin', 'Other Skin Issue'
+            ],
+            hair: [
+                'Hair Loss / Alopecia', 'Dandruff', 'Scalp Irritation / Redness', 
+                'Thinning Hair', 'Bald Patches', 'Scalp Infection', 'Itchy Scalp', 
+                'Greasy Hair / Oily Scalp', 'Dry Hair / Dry Scalp', 'Hair Breakage', 
+                'Scalp Psoriasis', 'Other Hair Issue'
+            ]
+        };
+
+        // --- Event Listeners for Initial Selection (Dropdowns) ---
+        issueCategory.addEventListener('change', function() {
+            const category = this.value;
+            if (category) {
+                conditionGroup.style.display = 'flex';
+                conditionType.innerHTML = '<option value="">-- Choose Condition --</option>';
+
+                conditionOptions[category].forEach(condition => {
+                    const option = document.createElement('option');
+                    option.value = condition;
+                    option.textContent = condition;
+                    conditionType.appendChild(option);
+                });
+                startButton.disabled = true;
+            } else {
+                conditionGroup.style.display = 'none';
+                startButton.disabled = true;
+            }
+        });
+
+        conditionType.addEventListener('change', function() {
+            startButton.disabled = !this.value;
+        });
+
+
+        // --- UI Helpers ---
+        function appendMessage(role, text) {
+            const msgElement = document.createElement('div');
+            msgElement.classList.add('message', role);
+            msgElement.innerHTML = `<div class="message-content">${text.replace(/\n/g, '<br>')}</div>`;
+            chatBox.appendChild(msgElement);
+            chatBox.scrollTop = chatBox.scrollHeight;
+        }
+
+        function toggleLoading(isLoading) {
+            if (conversationStage === 'chat') {
+                selectionInputContainer.querySelectorAll('button').forEach(btn => btn.disabled = isLoading);
+            } else if (conversationStage === 'image_upload') {
+                const isReady = selectedFiles.length > 0 && selectedFiles.length <= MAX_IMAGES;
+                uploadButton.disabled = isLoading || !isReady;
+                imageFileInput.disabled = isLoading;
+            } else if (conversationStage === 'analysis_complete') {
+                bookAppointmentButton.disabled = isLoading;
+                startNewChatButton.disabled = isLoading;
+            }
+            
+            const existingStatus = chatBox.querySelector('.status-message');
+            if (existingStatus) existingStatus.remove();
+
+            if (isLoading) {
+                const statusEl = document.createElement('div');
+                statusEl.classList.add('status-message');
+                statusEl.textContent = 'Assistant is analyzing data...';
+                chatBox.appendChild(statusEl);
+                chatBox.scrollTop = chatBox.scrollHeight;
+            } 
+        }
+
+        // --- API Call Function (Now only for /analyze) ---
+        async function fetchAnalysisResponse(endpoint, payload) {
+            toggleLoading(true);
+            try {
+                const response = await fetch(endpoint, {
+                    method: 'POST',
+                    body: payload
+                });
+
+                if (!response.ok) {
+                    let errorMsg = `HTTP error! status: ${response.status}`;
+                    try {
+                        const errorData = await response.json();
+                        errorMsg = errorData.detail || errorMsg;
+                    } catch (e) {}
+                    throw new Error(errorMsg);
+                }
+                
+                // Returns the structured JSON {reply: str, recommendation_needed: bool}
+                const data = await response.json(); 
+                return data;
+
+            } catch (error) {
+                console.log("Fetch error:", error);
+                toggleLoading(false);
+                appendMessage('bot', 'ERROR: Could not complete analysis. Check API Key or try again. Detail: ' + error.message);
+                return null;
+            } finally {
+                // Keep loading indicator until analysis is displayed in uploadImage
+            }
+        }
+
+        // --- Core Local Q&A Logic ---
+        function startDiagnosis() {
+            const categoryText = issueCategory.options[issueCategory.selectedIndex].textContent.trim();
+            const conditionText = conditionType.options[conditionType.selectedIndex].textContent.trim();
+
+            const userSelection = `Category: ${categoryText}, Condition: ${conditionText}`;
+            qnaSummary.category = categoryText;
+            qnaSummary.condition = conditionText;
+
+            appendMessage('user', userSelection);
+            messagesHistory.push({ role: 'user', content: userSelection });
+
+            // Transition from initial selection to Q&A
+            initialSelectionContainer.style.display = 'none';
+            selectionInputContainer.style.display = 'flex';
+            
+            currentQuestionStep = 0;
+            askNextQuestion();
+        }
+
+        function askNextQuestion() {
+            selectionInputContainer.innerHTML = '';
+            
+            if (currentQuestionStep < diagnosticQuestions.length) {
+                const currentQ = diagnosticQuestions[currentQuestionStep];
+                appendMessage('bot', currentQ.prompt);
+                
+                currentQ.options.forEach(optionText => {
+                    const button = document.createElement('button');
+                    button.classList.add('selection-button');
+                    button.textContent = optionText;
+                    button.onclick = () => handleAnswer(optionText, currentQ.key);
+                    selectionInputContainer.appendChild(button);
+                });
+            } else {
+                // Q&A Complete - Move to Image Upload Phase
+                appendMessage('bot', 'Thank you. Your symptom history is complete. Please upload 1 to 3 clear, well-lit images of the affected area(s) for visual analysis.');
+                conversationStage = 'image_upload';
+                selectionInputContainer.style.display = 'none';
+                imageUploadRow.style.display = 'flex';
+            }
+        }
+
+        function handleAnswer(answerText, key) {
+            appendMessage('user', answerText);
+            messagesHistory.push({ role: 'user', content: `${key.toUpperCase()}: ${answerText}` });
+            qnaSummary[key] = answerText;
+
+            currentQuestionStep++;
+            askNextQuestion();
+        }
+
+        // --- Image Upload & Analysis Logic ---
+        function previewImages(event) {
+            selectedFiles = Array.from(event.target.files).slice(0, MAX_IMAGES);
+            imagePreviewContainer.innerHTML = '';
+
+            if (selectedFiles.length > 0) {
+                selectedFiles.forEach(file => {
+                    const reader = new FileReader();
+                    reader.onload = (e) => {
+                        const img = document.createElement('img');
+                        img.src = e.target.result;
+                        img.classList.add('image-preview-thumb');
+                        img.style.display = 'block';
+                        imagePreviewContainer.appendChild(img);
+                    };
+                    reader.readAsDataURL(file);
+                });
+                uploadButton.disabled = false;
+            } else {
+                uploadButton.disabled = true;
+            }
+        }
+
+        async function uploadImage() {
+            if (selectedFiles.length === 0) {
+                appendMessage('bot', 'Please select at least one image to upload.');
+                return;
+            }
+
+            appendMessage('user', `Uploaded ${selectedFiles.length} image(s) for analysis.`);
+
+            const formData = new FormData();
+            
+            // Send entire Q&A history as JSON string
+            formData.append('messages', JSON.stringify(messagesHistory)); 
+            
+            // Append files
+            selectedFiles.forEach(file => {
+                formData.append('image_files', file);
+            });
+
+            const analysisResult = await fetchAnalysisResponse('http://127.0.0.1:8000/api/v1/analyze', formData);
+            toggleLoading(false); // Stop loading indicator after API returns
+
+            if (analysisResult) {
+                
+                let responseText = analysisResult.reply;
+                
+                // Add urgent prefix if recommendation is needed
+                if (analysisResult.recommendation_needed) {
+                    responseText = 'URGENT ALERT: ' + responseText;
+                }
+
+                appendMessage('bot', responseText);
+                
+                // Transition to Final Actions
+                conversationStage = 'analysis_complete';
+                imageUploadRow.style.display = 'none';
+                finalActionsRow.style.display = 'flex';
+                
+                // Show Book Appointment button only if recommendation is needed
+                bookAppointmentButton.style.display = analysisResult.recommendation_needed ? 'block' : 'none';
+                
+                // Adjust the Start New Chat button to take full width if the other one is hidden
+                startNewChatButton.style.flexGrow = analysisResult.recommendation_needed ? 1 : 2;
+            }
+        }
+        
+        // --- Final Action Handlers ---
+        function bookAppointment() {
+            appendMessage('bot', 'Redirecting you to a mock appointment booking page... (In a real application, this would open a new window to a provider\'s booking system).');
+        }
+
+        function startNewConversation() {
+            messagesHistory = [];
+            qnaSummary = {};
+            currentQuestionStep = 0;
+            selectedFiles = [];
+            imageFileInput.value = '';
+            imagePreviewContainer.innerHTML = '';
+            chatBox.innerHTML = '';
+            
+            conversationStage = 'selection';
+            finalActionsRow.style.display = 'none';
+            selectionInputContainer.style.display = 'none';
+            initialSelectionContainer.style.display = 'flex';
+            
+            appendMessage('bot', 'Hello! I am your Skin & Hair Issue Analyzer. Let us start by selecting the category and specific condition you are experiencing.');
+            // Reset dropdowns
+            issueCategory.value = '';
+            conditionGroup.style.display = 'none';
+            conditionType.innerHTML = '<option value="">-- Choose Condition --</option>';
+            startButton.disabled = true;
+        }
+
+        // Initialize chat on load
+        startNewConversation(); 
+
+    </script>
+</body>
+</html>
