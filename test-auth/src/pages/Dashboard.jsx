@@ -25,10 +25,10 @@ export default function Dashboard() {
     },
     {
       icon: FileText,
-      title: 'Create Case',
-      description: 'Document your skin concerns for dermatologists',
+      title: 'My Cases',
+      description: 'Manage your skin health cases',
       color: 'from-secondary to-purple-600',
-      path: '/create-case',
+      path: '/cases',
     },
     {
       icon: Users,
