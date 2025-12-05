@@ -32,9 +32,9 @@ export default function VisitHistory() {
       setLoading(false);
     }
   };
-
+  console.log(appointments)
   const upcomingAppointments = appointments.filter(
-    (apt) => apt.status === 'confirmed' && new Date(apt.preferred_slot) > new Date()
+    (apt) => apt.status === 'pending' && new Date(apt.preferred_slot) > new Date()
   );
 
   const pastAppointments = appointments.filter(

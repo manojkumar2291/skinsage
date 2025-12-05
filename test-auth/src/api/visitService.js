@@ -52,6 +52,6 @@ export const sendFollowUpMessage = async (visitId, message) => {
  * @returns {Promise<Array>}
  */
 export const getVisitHistory = async () => {
-  const response = await axiosClient.get('/api/visits/visits');
+  const response = await axiosClient.get('/api/appointment/appointments');
   return response.data;
 };
