@@ -1,4 +1,4 @@
-import { Navigate, useLocation } from 'react-router-dom';
+import { Navigate, useLocation, Outlet } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import LoadingSpinner from './LoadingSpinner';
 
@@ -23,5 +23,5 @@ console.log('ProtectedRoute - isAuthenticated:', isAuthenticated, 'user:', user,
     return <Navigate to="/complete-profile" replace />;
   }
 
-  return children;
+  return children ? children : <Outlet />;
 }
