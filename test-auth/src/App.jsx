@@ -8,7 +8,11 @@ import ProtectedRoute from './components/ProtectedRoute';
 import LandingPage from './pages/LandingPage';
 import Login from './pages/Login';
 import Register from './pages/Register';
+import ProviderLogin from './pages/ProviderLogin';
+import AdminLogin from './pages/AdminLogin';
 import Dashboard from './pages/Dashboard';
+import ProviderDashboard from './pages/ProviderDashboard';
+import AdminDashboard from './pages/AdminDashboard';
 import AIAnalysis from './pages/AIAnalysis';
 import CreateCase from './pages/CreateCase';
 import MyCases from './pages/MyCases';
@@ -34,12 +38,14 @@ const App = () => {
             {/* Public Routes */}
             <Route path="/" element={<LandingPage />} />
             <Route path="/login" element={<Login />} />
+            <Route path="/provider/login" element={<ProviderLogin />} />
+            <Route path="/admin/login" element={<AdminLogin />} />
             <Route path="/register" element={<Register />} />
             <Route path="/demo" element={<DemoPage />} />
             <Route path="/testimonials" element={<Testimonials />} />
 
-            {/* Protected Routes */}
-            <Route element={<ProtectedRoute />}>
+            {/* Patient Routes */}
+            <Route element={<ProtectedRoute allowedRoles={['patient']} />}>
               <Route path="/dashboard" element={<Dashboard />} />
               <Route path="/complete-profile" element={<CompleteProfile />} />
               <Route path="/ai-analysis" element={<AIAnalysis />} />
@@ -50,9 +56,21 @@ const App = () => {
               <Route path="/book-appointment/:providerId" element={<BookAppointment />} />
               <Route path="/visit-history" element={<VisitHistory />} />
               <Route path="/patient/visit/:visitId" element={<PatientVisitDetails />} />
-              <Route path="/provider/visit-summary/:visitId" element={<ProviderVisitSummary />} />
               <Route path="/video-call/:appointmentId" element={<VideoCall />} />
               <Route path="/chat/:visitId" element={<ChatInterface />} />
+            </Route>
+
+            {/* Provider Routes */}
+            <Route element={<ProtectedRoute allowedRoles={['provider']} />}>
+              <Route path="/provider/dashboard" element={<ProviderDashboard />} />
+              <Route path="/provider/visit-summary/:visitId" element={<ProviderVisitSummary />} />
+              {/* Reuse video call for providers too, logic inside handles it */}
+              <Route path="/video-call/:appointmentId" element={<VideoCall />} />
+            </Route>
+
+            {/* Admin Routes */}
+            <Route element={<ProtectedRoute allowedRoles={['admin']} />}>
+              <Route path="/admin/dashboard" element={<AdminDashboard />} />
               <Route path="/content-management" element={<ContentManagement />} />
             </Route>
 

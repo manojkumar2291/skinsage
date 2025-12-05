@@ -99,7 +99,7 @@ export default function PatientVisitDetails() {
                 </p>
               </div>
               <div>
-                <p className="text-sm text-gray-500 mb-1">Doctor</p>
+                <p className="text-sm text-gray-500 mb-1">Provider</p>
                 <p className="font-medium text-gray-900 flex items-center gap-2">
                   <User className="w-4 h-4 text-gray-400" />
                   Dr. {visit.provider_name}
