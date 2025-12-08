@@ -12,7 +12,7 @@ import Toast from '../components/Toast';
 import { Calendar, Clock, FileText, CreditCard } from 'lucide-react';
 
 const appointmentSchema = z.object({
-  case_id: z.number().min(1, 'Please select a case'),
+ case_id: z.coerce.number().min(1, 'Please select a case'),
   preferred_slot: z.string().min(1, 'Please select a date and time'),
 });
 
@@ -60,7 +60,7 @@ export default function BookAppointment() {
     try {
       // Create Razorpay order
       const orderData = await createOrder({
-        appointment_id: appointmentId,
+        appointment_id: String(appointmentId),
         amount: amount,
       });
 
@@ -72,10 +72,10 @@ export default function BookAppointment() {
 
       script.onload = () => {
         const options = {
-          key: import.meta.env.VITE_RAZORPAY_KEY_ID || 'rzp_test_key',
+          key: import.meta.env.VITE_RAZORPAY_KEY_ID || 'rzp_test_eeUQbwo7LiUgg2',
           amount: orderData.amount,
           currency: orderData.currency,
-          order_id: orderData.order_id,
+          order_id: orderData.order.id,
           name: 'SkinSage',
           description: 'Dermatology Consultation',
           handler: async (response) => {
@@ -126,7 +126,7 @@ export default function BookAppointment() {
       setBooking(true);
       const appointment = await requestAppointment({
         provider_id: parseInt(providerId),
-        case_id: data.case_id,
+        case_id: Number(data.case_id),
         preferred_slot: data.preferred_slot,
       });
 
@@ -178,13 +178,13 @@ export default function BookAppointment() {
           <div className="lg:col-span-1">
             <div className="bg-white rounded-lg shadow-md p-6 sticky top-8">
               <div className="w-20 h-20 bg-gradient-to-br from-primary to-secondary rounded-full flex items-center justify-center text-2xl font-bold text-white mx-auto mb-4">
-                {provider?.full_name?.charAt(0) || 'D'}
+                {provider?.name?.charAt(0) || 'D'}
               </div>
               <h3 className="text-xl font-bold text-gray-900 text-center mb-2">
-                Dr. {provider?.full_name}
+                Dr. {provider?.name}
               </h3>
               <p className="text-sm text-gray-600 text-center mb-4">
-                {provider?.specialization || 'General Dermatology'}
+                {provider?.speciality || 'General Dermatology'}
               </p>
               <div className="border-t border-gray-200 pt-4">
                 <div className="flex items-center justify-between mb-3">

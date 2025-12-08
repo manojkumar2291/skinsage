@@ -20,18 +20,21 @@ export default function VisitHistory() {
   const loadData = async () => {
     try {
       setLoading(true);
-      const [appointmentsData, visitsData] = await Promise.all([
+      const [appointmentsData, visitsData] = await Promise.allSettled([
         getAppointments(),
         getVisitHistory(),
       ]);
-      setAppointments(appointmentsData);
-      setVisits(visitsData);
+      setAppointments(appointmentsData.value);
+      setVisits(visitsData.value);
+      console.log(appointmentsData, visitsData);
     } catch (error) {
       console.error('Failed to load data:', error);
     } finally {
       setLoading(false);
     }
   };
+
+  console.log(appointments)
 
   const upcomingAppointments = appointments.filter(
     (apt) => apt.status !== 'completed' && apt.status !== 'cancelled'

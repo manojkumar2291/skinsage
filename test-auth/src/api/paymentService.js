@@ -8,7 +8,7 @@ import axiosClient from './axiosClient';
  * @returns {Promise<{order_id: string, amount: number, currency: string}>}
  */
 export const createOrder = async (orderData) => {
-  const response = await axiosClient.post('/api/payment/create-order', orderData);
+  const response = await axiosClient.post('/api/payment/payments/create-order', orderData);
   return response.data;
 };
 
@@ -21,7 +21,7 @@ export const createOrder = async (orderData) => {
  * @returns {Promise}
  */
 export const verifyPayment = async (paymentData) => {
-  const response = await axiosClient.post('/api/payment/verify-payment', paymentData);
+  const response = await axiosClient.post('/api/payment/payments/verify', paymentData);
   return response.data;
 };
 
@@ -30,6 +30,6 @@ export const verifyPayment = async (paymentData) => {
  * @returns {Promise<Array>}
  */
 export const getPaymentHistory = async () => {
-  const response = await axiosClient.get('/api/payment/history');
+  const response = await axiosClient.get('/api/payment/payments/history');
   return response.data;
 };
