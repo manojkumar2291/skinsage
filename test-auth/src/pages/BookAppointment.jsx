@@ -81,10 +81,9 @@ export default function BookAppointment() {
           handler: async (response) => {
             try {
               await verifyPayment({
-                razorpay_order_id: response.razorpay_order_id,
-                razorpay_payment_id: response.razorpay_payment_id,
-                razorpay_signature: response.razorpay_signature,
-              });
+                 razorpay_order_id: String(response.razorpay_order_id),
+                razorpay_payment_id:String(response.razorpay_payment_id),
+                razorpay_signature:String(response.razorpay_signature),});
 
               setToast({
                 message: 'Appointment booked successfully!',

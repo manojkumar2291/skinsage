@@ -8,15 +8,12 @@ import axiosClient from './axiosClient';
  * @returns {Promise<{access_token: string, refresh_token: string, token_type: string}>}
  */
 export const login = async (credentials) => {
-  const formData = new URLSearchParams();
-  formData.append('username', credentials.username);
-  formData.append('password', credentials.password);
+  const payload = {
+    email: credentials.username, // Map frontend 'username' to backend 'email'
+    password: credentials.password
+  };
 
-  const response = await axiosClient.post('/api/auth/login', formData, {
-    headers: {
-      'Content-Type': 'application/x-www-form-urlencoded',
-    },
-  });
+    const response = await axiosClient.post('/api/auth/login', payload);
   
   // Store tokens
   if (response.data.access_token) {
