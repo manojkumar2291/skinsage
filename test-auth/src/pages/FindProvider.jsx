@@ -27,14 +27,11 @@ export default function FindProvider() {
       setLoading(false);
     }
   };
-  console.log(providers)
 
   const filteredProviders = providers.filter(provider =>
     provider.full_name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    provider.specialty?.toLowerCase().includes(searchQuery.toLowerCase())
+    provider.specialization?.toLowerCase().includes(searchQuery.toLowerCase())
   );
-  console.log(filteredProviders.length,searchQuery.toLowerCase())
-
 
   return (
     <div className="min-h-screen bg-gray-50 py-8 px-4">
@@ -110,17 +107,17 @@ export default function FindProvider() {
                 {/* Provider Image */}
                 <div className="h-48 bg-gradient-to-br from-primary/20 to-secondary/20 flex items-center justify-center">
                   <div className="w-24 h-24 bg-white rounded-full flex items-center justify-center text-3xl font-bold text-primary">
-                    {provider.name?.charAt(0) || 'D'}
+                    {provider.full_name?.charAt(0) || 'D'}
                   </div>
                 </div>
 
                 {/* Provider Info */}
                 <div className="p-6">
                   <h3 className="text-xl font-bold text-gray-900 mb-1">
-                    Dr. {provider.name}
+                    Dr. {provider.full_name}
                   </h3>
                   <p className="text-sm text-gray-600 mb-3">
-                    {provider.speciality || 'General Dermatology'}
+                    {provider.specialization || 'General Dermatology'}
                   </p>
 
                   {/* Rating */}

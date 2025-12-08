@@ -40,6 +40,11 @@ export default function ProviderDashboard() {
   );
 
   const pendingAppointments = appointments.filter(apt => apt.status === 'pending');
+  const acceptedAppointments = appointments.filter(apt => apt.status === 'confirmed');
+  const completedAppointments = appointments.filter(apt => apt.status === 'completed');
+
+  // Tab State
+  const [activeTab, setActiveTab] = useState('pending');
 
   if (loading) {
     return (
@@ -48,6 +53,24 @@ export default function ProviderDashboard() {
       </div>
     );
   }
+
+  const renderAppointmentList = (list) => {
+    if (list.length === 0) {
+      return <div className="text-center text-gray-500 py-8">No appointments found.</div>;
+    }
+    return (
+      <div className="grid gap-6">
+        {list.map((apt) => (
+          <AppointmentCard
+            key={apt.id}
+            appointment={apt}
+            role="provider"
+            onStatusChange={loadDashboardData}
+          />
+        ))}
+      </div>
+    );
+  };
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -108,6 +131,50 @@ export default function ProviderDashboard() {
                 <Users className="w-6 h-6 text-green-600" />
               </div>
             </div>
+          </div>
+        </div>
+
+        {/* Appointments Tabs */}
+        <div className="bg-white rounded-xl shadow-sm overflow-hidden mb-8">
+          <div className="border-b border-gray-200">
+            <nav className="flex -mb-px">
+              <button
+                onClick={() => setActiveTab('pending')}
+                className={`flex-1 py-4 px-1 text-center border-b-2 font-medium text-sm ${
+                  activeTab === 'pending'
+                    ? 'border-blue-500 text-blue-600'
+                    : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                }`}
+              >
+                Pending ({pendingAppointments.length})
+              </button>
+              <button
+                onClick={() => setActiveTab('accepted')}
+                className={`flex-1 py-4 px-1 text-center border-b-2 font-medium text-sm ${
+                  activeTab === 'accepted'
+                    ? 'border-green-500 text-green-600'
+                    : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                }`}
+              >
+                Accepted ({acceptedAppointments.length})
+              </button>
+              <button
+                onClick={() => setActiveTab('completed')}
+                className={`flex-1 py-4 px-1 text-center border-b-2 font-medium text-sm ${
+                  activeTab === 'completed'
+                    ? 'border-purple-500 text-purple-600'
+                    : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                }`}
+              >
+                Completed ({completedAppointments.length})
+              </button>
+            </nav>
+          </div>
+
+          <div className="p-6">
+            {activeTab === 'pending' && renderAppointmentList(pendingAppointments)}
+            {activeTab === 'accepted' && renderAppointmentList(acceptedAppointments)}
+            {activeTab === 'completed' && renderAppointmentList(completedAppointments)}
           </div>
         </div>
 
