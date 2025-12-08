@@ -3,7 +3,8 @@ import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { getAppointments } from '../api/appointmentService';
 import LoadingSpinner from '../components/LoadingSpinner';
-import { Calendar, Users, Activity, Clock, LogOut, CheckCircle, Video, FileText } from 'lucide-react';
+import AppointmentCard from '../components/AppointmentCard';
+import { Calendar, Users, Activity, Clock, LogOut } from 'lucide-react';
 import { format } from 'date-fns';
 
 export default function ProviderDashboard() {
@@ -118,49 +119,19 @@ export default function ProviderDashboard() {
                 <h2 className="text-lg font-bold text-gray-900">Today's Schedule</h2>
                 <span className="text-sm text-gray-500">{format(new Date(), 'MMMM dd, yyyy')}</span>
               </div>
-              <div className="divide-y divide-gray-200">
+              <div className="p-6 grid gap-6">
                 {todayAppointments.length === 0 ? (
-                  <div className="p-8 text-center text-gray-500">
+                  <div className="text-center text-gray-500">
                     No appointments scheduled for today.
                   </div>
                 ) : (
                   todayAppointments.map((apt) => (
-                    <div key={apt.id} className="p-6 hover:bg-gray-50 transition">
-                      <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-4">
-                          <div className="text-center min-w-[60px]">
-                            <p className="text-sm font-bold text-gray-900">
-                              {format(new Date(apt.preferred_slot), 'hh:mm')}
-                            </p>
-                            <p className="text-xs text-gray-500">
-                              {format(new Date(apt.preferred_slot), 'a')}
-                            </p>
-                          </div>
-                          <div>
-                            <h3 className="font-semibold text-gray-900">{apt.patient_name || 'Patient Name'}</h3>
-                            <p className="text-sm text-gray-600">{apt.case_title || 'General Consultation'}</p>
-                          </div>
-                        </div>
-                        <div className="flex gap-2">
-                           {apt.status === 'confirmed' && (
-                             <button
-                               onClick={() => navigate(`/video-call/${apt.id}`)}
-                               className="p-2 bg-blue-100 text-blue-600 rounded-lg hover:bg-blue-200 transition"
-                               title="Start Video Call"
-                             >
-                               <Video className="w-5 h-5" />
-                             </button>
-                           )}
-                           <button
-                             onClick={() => navigate(`/provider/visit-summary/${apt.id}`)}
-                             className="p-2 bg-gray-100 text-gray-600 rounded-lg hover:bg-gray-200 transition"
-                             title="View/Edit Summary"
-                           >
-                             <FileText className="w-5 h-5" />
-                           </button>
-                        </div>
-                      </div>
-                    </div>
+                    <AppointmentCard
+                      key={apt.id}
+                      appointment={apt}
+                      role="provider"
+                      onStatusChange={loadDashboardData}
+                    />
                   ))
                 )}
               </div>

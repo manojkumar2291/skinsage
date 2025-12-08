@@ -1,13 +1,16 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
+import { getAppointments } from '../api/appointmentService';
 import LoadingSpinner from '../components/LoadingSpinner';
+import AppointmentCard from '../components/AppointmentCard';
 import { Shield, Users, FileText, Settings, LogOut, Activity } from 'lucide-react';
 
 export default function AdminDashboard() {
   const navigate = useNavigate();
   const { user, logout } = useAuth();
   const [loading, setLoading] = useState(false);
+  const [recentAppointments, setRecentAppointments] = useState([]);
 
   // Mock data for admin dashboard
   const stats = [
@@ -15,6 +18,21 @@ export default function AdminDashboard() {
     { label: 'Active Providers', value: '45', icon: Activity, color: 'text-green-600', bg: 'bg-green-50' },
     { label: 'Total Cases', value: '890', icon: FileText, color: 'text-purple-600', bg: 'bg-purple-50' },
   ];
+
+  useEffect(() => {
+    loadData();
+  }, []);
+
+  const loadData = async () => {
+    try {
+      // In a real app, this would be an admin-specific API to get all system appointments
+      // For now, we reuse the existing one, assuming it might return some data
+      const data = await getAppointments();
+      setRecentAppointments(data.slice(0, 3)); // Just show recent 3
+    } catch (error) {
+      console.error('Failed to load admin data');
+    }
+  };
 
   const handleLogout = () => {
     logout();
@@ -98,7 +116,21 @@ export default function AdminDashboard() {
           })}
         </div>
 
-        {/* Recent Activity Placeholder */}
+        {/* Recent Activity / Appointments */}
+        <div className="bg-white rounded-xl shadow-sm p-6 mb-8">
+          <h2 className="text-lg font-bold text-gray-900 mb-4">Recent Appointments (System Wide)</h2>
+          <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
+             {recentAppointments.length > 0 ? (
+               recentAppointments.map(apt => (
+                 <AppointmentCard key={apt.id} appointment={apt} role="admin" />
+               ))
+             ) : (
+               <p className="text-gray-500">No recent activity.</p>
+             )}
+          </div>
+        </div>
+
+        {/* System Health */}
         <div className="bg-white rounded-xl shadow-sm p-6">
           <h2 className="text-lg font-bold text-gray-900 mb-4">System Health & Logs</h2>
           <div className="h-64 flex items-center justify-center text-gray-400 border-2 border-dashed border-gray-200 rounded-lg">
