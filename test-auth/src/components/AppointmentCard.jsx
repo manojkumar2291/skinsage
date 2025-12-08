@@ -20,7 +20,8 @@ export default function AppointmentCard({ appointment, role = 'patient', onStatu
   const handleAccept = async () => {
     try {
       setLoading(true);
-      await confirmAppointment(appointment.id);
+      const data= { status: 'confirmed' ,confirmed_slot:appointment.preferred_slot}
+      await confirmAppointment(appointment.id,data );
       setToast({ message: 'Appointment confirmed', type: 'success' });
       if (onStatusChange) onStatusChange();
     } catch (error) {

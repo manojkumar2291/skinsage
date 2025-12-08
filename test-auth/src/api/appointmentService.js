@@ -18,8 +18,12 @@ export const requestAppointment = async (appointmentData) => {
  * @param {number} appointmentId
  * @returns {Promise}
  */
-export const confirmAppointment = async (appointmentId) => {
-  const response = await axiosClient.post(`/api/appointment/appointments/${appointmentId}/confirm`);
+export const confirmAppointment = async (appointmentId, appointmentData) => {
+ 
+  const response = await axiosClient.patch(
+    `/api/appointment/appointments/${appointmentId}/confirm`,
+    appointmentData
+  );
   return response.data;
 };
 
