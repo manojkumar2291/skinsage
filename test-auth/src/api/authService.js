@@ -8,15 +8,15 @@ import axiosClient from './axiosClient';
  * @returns {Promise<{access_token: string, refresh_token: string, token_type: string}>}
  */
 export const login = async (credentials) => {
-  const formData = new URLSearchParams();
-  formData.append('username', credentials.username);
-  formData.append('password', credentials.password);
+  // 1. Create a plain object (Backend expects JSON)
+  const payload = {
+    email: credentials.username, // Map frontend 'username' to backend 'email'
+    password: credentials.password
+  };
 
-  const response = await axiosClient.post('/api/auth/login', formData, {
-    headers: {
-      'Content-Type': 'application/x-www-form-urlencoded',
-    },
-  });
+  // 2. Send the object. Axios automatically stringifies it to JSON
+  // and sets the 'Content-Type: application/json' header for you.
+  const response = await axiosClient.post('/api/auth/login', payload);
   
   // Store tokens
   if (response.data.access_token) {

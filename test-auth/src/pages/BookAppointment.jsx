@@ -12,7 +12,8 @@ import Toast from '../components/Toast';
 import { Calendar, Clock, FileText, CreditCard } from 'lucide-react';
 
 const appointmentSchema = z.object({
-  case_id: z.number().min(1, 'Please select a case'),
+  // Change z.number() to z.coerce.number()
+  case_id: z.coerce.number().min(1, 'Please select a case'),
   preferred_slot: z.string().min(1, 'Please select a date and time'),
 });
 
@@ -57,12 +58,15 @@ export default function BookAppointment() {
   };
 
   const handlePayment = async (appointmentId, amount) => {
+    console.log('Initiating payment for appointment ID:', appointmentId, 'Amount:', amount);
     try {
       // Create Razorpay order
       const orderData = await createOrder({
-        appointment_id: appointmentId,
+        appointment_id: String(appointmentId),
         amount: amount,
+        currency: "INR"
       });
+      console.log('Order created:', orderData);
 
       // Load Razorpay script
       const script = document.createElement('script');
@@ -72,18 +76,19 @@ export default function BookAppointment() {
 
       script.onload = () => {
         const options = {
-          key: import.meta.env.VITE_RAZORPAY_KEY_ID || 'rzp_test_key',
+          key: import.meta.env.VITE_RAZORPAY_KEY_ID || "rzp_test_RkhfxJvitmevKb",
           amount: orderData.amount,
           currency: orderData.currency,
-          order_id: orderData.order_id,
+          order_id: orderData.order.id,
           name: 'SkinSage',
           description: 'Dermatology Consultation',
           handler: async (response) => {
+            console.log(response)
             try {
               await verifyPayment({
-                razorpay_order_id: response.razorpay_order_id,
-                razorpay_payment_id: response.razorpay_payment_id,
-                razorpay_signature: response.razorpay_signature,
+                razorpay_order_id: String(response.razorpay_order_id),
+                razorpay_payment_id:String(response.razorpay_payment_id),
+                razorpay_signature:String(response.razorpay_signature),
               });
 
               setToast({
@@ -114,6 +119,7 @@ export default function BookAppointment() {
         razorpay.open();
       };
     } catch (error) {
+      console.log('Payment initialization error:', error);
       setToast({
         message: 'Payment initialization failed',
         type: 'error',
@@ -122,6 +128,7 @@ export default function BookAppointment() {
   };
 
   const onSubmit = async (data) => {
+    console.log('Booking appointment with data:', data);
     try {
       setBooking(true);
       const appointment = await requestAppointment({
@@ -129,7 +136,7 @@ export default function BookAppointment() {
         case_id: data.case_id,
         preferred_slot: data.preferred_slot,
       });
-
+      console.log('Appointment requested:', appointment);
       // Initiate payment
       await handlePayment(appointment.id, 500); // ₹500 consultation fee
     } catch (error) {
@@ -151,7 +158,7 @@ export default function BookAppointment() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 py-8 px-4">
+    <div className="bg-white shadow-lg rounded-md px-4 py-3 border z-50 fixed top-5 right-5">
       {toast && (
         <Toast
           message={toast.message}
@@ -299,19 +306,24 @@ export default function BookAppointment() {
                     Cancel
                   </button>
                   <button
-                    type="submit"
-                    disabled={booking || cases.length === 0}
-                    className="flex-1 px-6 py-3 bg-primary text-white rounded-lg hover:bg-primary-dark transition font-medium disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
-                  >
-                    {booking ? (
-                      <>
-                        <LoadingSpinner size="sm" />
-                        <span>Processing...</span>
-                      </>
-                    ) : (
-                      'Proceed to Payment'
-                    )}
-                  </button>
+  type="submit"
+  // REMOVED: cases.length === 0 check
+  disabled={booking} 
+  className={`flex-1 px-6 py-3 rounded-lg transition font-medium flex items-center justify-center gap-2 ${
+    booking 
+      ? "bg-primary/70 cursor-not-allowed" 
+      : "bg-primary hover:bg-primary-dark text-white"
+  }`}
+>
+  {booking ? (
+    <>
+      <LoadingSpinner size="sm" />
+      <span>Processing...</span>
+    </>
+  ) : (
+    'Proceed to Payment'
+  )}
+</button>
                 </div>
               </form>
             </div>
