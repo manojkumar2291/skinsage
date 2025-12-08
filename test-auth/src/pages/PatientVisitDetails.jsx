@@ -1,14 +1,15 @@
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { getVisitSummary } from '../api/visitService';
+import { getVisitSummary, getAIChatHistory } from '../api/visitService';
 import LoadingSpinner from '../components/LoadingSpinner';
-import { FileText, Calendar, User, Clock, Activity, AlertCircle } from 'lucide-react';
-import { format } from 'date-fns';
+import { FileText, Calendar, User, Clock, Activity, AlertCircle, MessageSquare } from 'lucide-react';
+import { format, differenceInDays } from 'date-fns';
 
 export default function PatientVisitDetails() {
   const { visitId } = useParams();
   const navigate = useNavigate();
   const [visit, setVisit] = useState(null);
+  const [aiChatLogs, setAiChatLogs] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
@@ -19,8 +20,12 @@ export default function PatientVisitDetails() {
   const loadVisitDetails = async () => {
     try {
       setLoading(true);
-      const data = await getVisitSummary(visitId);
-      setVisit(data);
+      const [visitData, chatData] = await Promise.all([
+        getVisitSummary(visitId),
+        getAIChatHistory(visitId).catch(() => []) // Handle error gracefully if no chat exists
+      ]);
+      setVisit(visitData);
+      setAiChatLogs(chatData);
     } catch (err) {
       console.error('Failed to load visit details:', err);
       setError('Failed to load visit details. Please try again.');
@@ -28,6 +33,8 @@ export default function PatientVisitDetails() {
       setLoading(false);
     }
   };
+
+  const isChatExpired = visit && differenceInDays(new Date(), new Date(visit.appointment_date)) > 7;
 
   if (loading) {
     return (
@@ -139,6 +146,28 @@ export default function PatientVisitDetails() {
             </div>
           </div>
 
+          {/* AI Chat History */}
+          {aiChatLogs && aiChatLogs.length > 0 && (
+            <div className="bg-white rounded-lg shadow-md p-6">
+              <h2 className="text-xl font-bold text-gray-900 mb-4 flex items-center gap-2">
+                <MessageSquare className="w-5 h-5 text-primary" />
+                AI Analysis History
+              </h2>
+              <div className="space-y-4 bg-gray-50 p-4 rounded-lg max-h-60 overflow-y-auto">
+                {aiChatLogs.map((log, index) => (
+                  <div key={index} className={`flex flex-col ${log.role === 'user' ? 'items-end' : 'items-start'}`}>
+                    <div className={`px-4 py-2 rounded-lg max-w-[80%] text-sm ${
+                      log.role === 'user' ? 'bg-primary text-white rounded-br-none' : 'bg-white border border-gray-200 text-gray-800 rounded-bl-none'
+                    }`}>
+                      <p>{log.content}</p>
+                    </div>
+                    <span className="text-xs text-gray-400 mt-1">{log.role === 'user' ? 'You' : 'AI Assistant'}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
           {/* Prescriptions (Placeholder if you have prescription data) */}
           {/*
           <div className="bg-white rounded-lg shadow-md p-6">
@@ -161,9 +190,16 @@ export default function PatientVisitDetails() {
             </button>
             <button
               onClick={() => navigate(`/chat/${visitId}`)}
-              className="px-6 py-3 bg-primary text-white rounded-lg hover:bg-primary-dark transition font-medium"
+              disabled={isChatExpired}
+              className={`px-6 py-3 rounded-lg transition font-medium flex items-center gap-2 ${
+                isChatExpired
+                  ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
+                  : 'bg-primary text-white hover:bg-primary-dark'
+              }`}
+              title={isChatExpired ? "Chat is only available for 7 days after appointment" : "Chat with your provider"}
             >
-              Message Doctor
+              <MessageSquare className="w-4 h-4" />
+              {isChatExpired ? 'Chat Expired' : 'Message Doctor'}
             </button>
           </div>
         </div>

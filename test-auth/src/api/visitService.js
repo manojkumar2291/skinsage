@@ -55,3 +55,15 @@ export const getVisitHistory = async () => {
   const response = await axiosClient.get('/api/visits/visits');
   return response.data;
 };
+
+/**
+ * Get AI chat history for a visit
+ * @param {number} visitId
+ * @returns {Promise<Array>}
+ */
+export const getAIChatHistory = async (visitId) => {
+  // In a real implementation, this would be a specific endpoint
+  // For now, we'll try to fetch it from the analysis service or a new endpoint
+  const response = await axiosClient.get(`/api/visits/visits/${visitId}/ai-chat`);
+  return response.data;
+};

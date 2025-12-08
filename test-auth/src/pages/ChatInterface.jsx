@@ -2,7 +2,8 @@ import { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { sendFollowUpMessage, getVisitSummary } from '../api/visitService';
 import LoadingSpinner from '../components/LoadingSpinner';
-import { Send, User, ArrowLeft, MoreVertical } from 'lucide-react';
+import { Send, User, ArrowLeft, MoreVertical, AlertTriangle } from 'lucide-react';
+import { differenceInDays } from 'date-fns';
 
 export default function ChatInterface() {
   const { visitId } = useParams();
@@ -12,6 +13,7 @@ export default function ChatInterface() {
   const [loading, setLoading] = useState(true);
   const [sending, setSending] = useState(false);
   const [visit, setVisit] = useState(null);
+  const [isExpired, setIsExpired] = useState(false);
   const messagesEndRef = useRef(null);
 
   // Mock messages for demonstration (replace with actual API if available)
@@ -31,6 +33,15 @@ export default function ChatInterface() {
       setLoading(true);
       const data = await getVisitSummary(visitId);
       setVisit(data);
+
+      // Check expiration (7 days from appointment)
+      if (data.appointment_date) {
+        const daysDiff = differenceInDays(new Date(), new Date(data.appointment_date));
+        if (daysDiff > 7) {
+          setIsExpired(true);
+        }
+      }
+
       // If the API returns chat history, set it here.
       // For now, I'll initialize with a system message or empty.
       setMessages([
@@ -154,23 +165,30 @@ export default function ChatInterface() {
 
       {/* Input Area */}
       <div className="bg-white border-t border-gray-200 p-4 sticky bottom-0">
-        <form onSubmit={handleSend} className="max-w-4xl mx-auto relative flex gap-2">
-          <input
-            type="text"
-            value={newMessage}
-            onChange={(e) => setNewMessage(e.target.value)}
-            placeholder="Type your message..."
-            className="flex-1 bg-gray-100 border-0 rounded-full px-6 py-3 focus:ring-2 focus:ring-primary focus:bg-white transition outline-none"
-            disabled={sending}
-          />
-          <button
-            type="submit"
-            disabled={!newMessage.trim() || sending}
-            className="bg-primary hover:bg-primary-dark text-white p-3 rounded-full transition disabled:opacity-50 disabled:cursor-not-allowed flex-shrink-0"
-          >
-            <Send className="w-5 h-5" />
-          </button>
-        </form>
+        {isExpired ? (
+          <div className="max-w-4xl mx-auto p-3 bg-yellow-50 border border-yellow-200 rounded-lg flex items-center justify-center gap-2 text-yellow-800">
+            <AlertTriangle className="w-5 h-5" />
+            <p className="font-medium">This chat session has expired (limit: 7 days after appointment).</p>
+          </div>
+        ) : (
+          <form onSubmit={handleSend} className="max-w-4xl mx-auto relative flex gap-2">
+            <input
+              type="text"
+              value={newMessage}
+              onChange={(e) => setNewMessage(e.target.value)}
+              placeholder="Type your message..."
+              className="flex-1 bg-gray-100 border-0 rounded-full px-6 py-3 focus:ring-2 focus:ring-primary focus:bg-white transition outline-none"
+              disabled={sending}
+            />
+            <button
+              type="submit"
+              disabled={!newMessage.trim() || sending}
+              className="bg-primary hover:bg-primary-dark text-white p-3 rounded-full transition disabled:opacity-50 disabled:cursor-not-allowed flex-shrink-0"
+            >
+              <Send className="w-5 h-5" />
+            </button>
+          </form>
+        )}
       </div>
     </div>
   );
