@@ -1,251 +1,340 @@
-import { useState } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useDropzone } from 'react-dropzone';
-import { analyzeImage } from '../api/analysisService';
-import LoadingSpinner from '../components/LoadingSpinner';
-import Toast from '../components/Toast';
-import { Upload, Image as ImageIcon, AlertCircle, CheckCircle } from 'lucide-react';
+import axiosClient from '../api/axiosClient';
+import './AIAnalysis.css';
+
+const MAX_IMAGES = 3;
+
+// --- Local Question Data ---
+const diagnosticQuestions = [
+  {
+    prompt: "What is the approximate duration of the issue? (e.g., when did you first notice it)",
+    options: ["Less than 1 week", "1 to 4 weeks", "1 to 6 months", "More than 6 months"],
+    key: "duration"
+  },
+  {
+    prompt: "How would you describe the severity or discomfort level?",
+    options: ["Mild (barely noticeable)", "Moderate (interferes sometimes)", "Severe (interferes significantly)", "Painful and debilitating"],
+    key: "severity"
+  },
+  {
+    prompt: "What is the main symptom besides the visual appearance?",
+    options: ["Itching", "Burning/Stinging", "Pain", "Dryness/Flakiness", "No major symptom"],
+    key: "symptom"
+  },
+  {
+    prompt: "Have you tried any treatments (creams, medication) for this issue, and did they help?",
+    options: ["No prior treatments", "Over-the-counter treatment (helped)", "Over-the-counter treatment (no help)", "Prescription treatment (helped)", "Prescription treatment (no help)"],
+    key: "treatment"
+  }
+];
+
+const conditionOptions = {
+  skin: [
+    'Rash', 'Acne / Pimples', 'Eczema', 'Psoriasis', 'Dermatitis',
+    'Hives / Urticaria', 'Fungal Infection', 'Moles / Dark Spots',
+    'Burns / Wounds', 'Swelling / Inflammation', 'Skin Discoloration',
+    'Warts', 'Dry / Flaky Skin', 'Other Skin Issue'
+  ],
+  hair: [
+    'Hair Loss / Alopecia', 'Dandruff', 'Scalp Irritation / Redness',
+    'Thinning Hair', 'Bald Patches', 'Scalp Infection', 'Itchy Scalp',
+    'Greasy Hair / Oily Scalp', 'Dry Hair / Dry Scalp', 'Hair Breakage',
+    'Scalp Psoriasis', 'Other Hair Issue'
+  ]
+};
 
 export default function AIAnalysis() {
   const navigate = useNavigate();
-  const [selectedFile, setSelectedFile] = useState(null);
-  const [preview, setPreview] = useState(null);
-  const [analyzing, setAnalyzing] = useState(false);
-  const [result, setResult] = useState(null);
-  const [toast, setToast] = useState(null);
+  const chatBoxRef = useRef(null);
 
-  const { getRootProps, getInputProps, isDragActive } = useDropzone({
-    accept: {
-      'image/*': ['.png', '.jpg', '.jpeg', '.webp']
-    },
-    maxFiles: 1,
-    onDrop: (acceptedFiles) => {
-      if (acceptedFiles.length > 0) {
-        const file = acceptedFiles[0];
-        setSelectedFile(file);
-        setPreview(URL.createObjectURL(file));
-        setResult(null);
-      }
+  // State
+  const [messages, setMessages] = useState([]);
+  const [stage, setStage] = useState('selection'); // selection, chat, image_upload, analysis_complete
+  const [currentQuestionStep, setCurrentQuestionStep] = useState(0);
+  const [selectedFiles, setSelectedFiles] = useState([]);
+  const [previews, setPreviews] = useState([]);
+  const [qnaSummary, setQnaSummary] = useState({});
+  const [loading, setLoading] = useState(false);
+  const [analysisResult, setAnalysisResult] = useState(null);
+
+  // Initial Selection State
+  const [category, setCategory] = useState('');
+  const [condition, setCondition] = useState('');
+
+  // Initial greeting
+  useEffect(() => {
+    startNewConversation();
+  }, []);
+
+  useEffect(() => {
+    // Auto scroll to bottom
+    if (chatBoxRef.current) {
+      chatBoxRef.current.scrollTop = chatBoxRef.current.scrollHeight;
     }
-  });
+  }, [messages, loading]);
 
-  const handleAnalyze = async () => {
-    if (!selectedFile) {
-      setToast({
-        message: 'Please select an image first',
-        type: 'error'
-      });
+  const startNewConversation = () => {
+    setMessages([{ role: 'bot', content: 'Hello! I am your Skin & Hair Issue Analyzer. Let us start by selecting the category and specific condition you are experiencing.' }]);
+    setStage('selection');
+    setCurrentQuestionStep(0);
+    setSelectedFiles([]);
+    setPreviews([]);
+    setQnaSummary({});
+    setCategory('');
+    setCondition('');
+    setLoading(false);
+    setAnalysisResult(null);
+  };
+
+  const handleStartDiagnosis = () => {
+    const userSelection = `Category: ${category}, Condition: ${condition}`;
+    setQnaSummary(prev => ({ ...prev, category, condition }));
+    setMessages(prev => [...prev, { role: 'user', content: userSelection }]);
+
+    setStage('chat');
+    setCurrentQuestionStep(0);
+    askNextQuestion(0);
+  };
+
+  const askNextQuestion = (stepIndex) => {
+    if (stepIndex < diagnosticQuestions.length) {
+      const currentQ = diagnosticQuestions[stepIndex];
+      // We add the question to messages, but the UI handles buttons separately based on currentQuestionStep
+      // Actually, standard chat UI: bot asks, user answers.
+      // So we add bot message.
+      setMessages(prev => [...prev, { role: 'bot', content: currentQ.prompt }]);
+    } else {
+      // Q&A Complete
+      setMessages(prev => [...prev, { role: 'bot', content: 'Thank you. Your symptom history is complete. Please upload 1 to 3 clear, well-lit images of the affected area(s) for visual analysis.' }]);
+      setStage('image_upload');
+    }
+  };
+
+  const handleAnswer = (answerText, key) => {
+    // Add user answer to chat
+    setMessages(prev => [...prev, { role: 'user', content: answerText }]);
+
+    // Update summary
+    setQnaSummary(prev => ({ ...prev, [key]: answerText }));
+
+    // Move to next
+    const nextStep = currentQuestionStep + 1;
+    setCurrentQuestionStep(nextStep);
+
+    // Slight delay for bot response
+    setTimeout(() => {
+      askNextQuestion(nextStep);
+    }, 300);
+  };
+
+  const handleFileSelect = (e) => {
+    if (e.target.files) {
+      const files = Array.from(e.target.files).slice(0, MAX_IMAGES);
+      setSelectedFiles(files);
+
+      // Create previews
+      const newPreviews = files.map(file => URL.createObjectURL(file));
+      setPreviews(newPreviews);
+    }
+  };
+
+  const handleUploadAndAnalyze = async () => {
+    if (selectedFiles.length === 0) {
+      setMessages(prev => [...prev, { role: 'bot', content: 'Please select at least one image to upload.' }]);
       return;
     }
 
+    setMessages(prev => [...prev, { role: 'user', content: `Uploaded ${selectedFiles.length} image(s) for analysis.` }]);
+    setLoading(true);
+
+    const formData = new FormData();
+    // Send entire Q&A history + selection as context
+    // Constructing message history for the backend
+    const contextMessages = [
+        ...messages.map(m => ({ role: m.role, content: m.content })),
+        // Ensure Q&A summary is explicitly part of the context if needed,
+        // though the chat history contains it.
+    ];
+    formData.append('messages', JSON.stringify(contextMessages));
+
+    selectedFiles.forEach(file => {
+      formData.append('image_files', file);
+    });
+
     try {
-      setAnalyzing(true);
-      const data = await analyzeImage(selectedFile);
-      setResult(data);
-      setToast({
-        message: 'Analysis complete!',
-        type: 'success'
+      // Using axiosClient which has base URL configured
+      // Note: The HTML used /api/v1/analyze. Assuming this matches backend routes.
+      // If backend is on port 8000 and vite proxies or axios has baseURL.
+      const response = await axiosClient.post('/api/v1/analyze', formData, {
+        headers: {
+          'Content-Type': 'multipart/form-data',
+        },
       });
+
+      const data = response.data;
+      setAnalysisResult(data);
+
+      let responseText = data.reply;
+      if (data.recommendation_needed) {
+        responseText = 'URGENT ALERT: ' + responseText;
+      }
+
+      setMessages(prev => [...prev, { role: 'bot', content: responseText }]);
+      setStage('analysis_complete');
+
     } catch (error) {
-      setToast({
-        message: error.detail || 'Analysis failed. Please try again.',
-        type: 'error'
-      });
+      console.error("Analysis error:", error);
+      let errorMsg = 'Could not complete analysis. Please try again.';
+      if (error.response?.data?.detail) {
+        errorMsg += ' Detail: ' + error.response.data.detail;
+      }
+      setMessages(prev => [...prev, { role: 'bot', content: 'ERROR: ' + errorMsg }]);
     } finally {
-      setAnalyzing(false);
+      setLoading(false);
     }
   };
 
-  const handleReset = () => {
-    setSelectedFile(null);
-    setPreview(null);
-    setResult(null);
+  const handleBookAppointment = () => {
+    setMessages(prev => [...prev, { role: 'bot', content: 'Redirecting you to find a dermatologist...' }]);
+    setTimeout(() => {
+        navigate('/find-provider');
+    }, 1000);
   };
 
   return (
-    <div className="min-h-screen bg-gray-50 py-8 px-4">
-      {toast && (
-        <Toast
-          message={toast.message}
-          type={toast.type}
-          onClose={() => setToast(null)}
-        />
-      )}
+    <div className="ai-chat-wrapper">
+      <div className="chat-container">
+        <div className="chat-header">Skin & Hair Issue Analyzer</div>
 
-      <div className="max-w-6xl mx-auto">
-        {/* Header */}
-        <div className="mb-8">
-          <button
-            onClick={() => navigate('/dashboard')}
-            className="text-primary hover:text-primary-dark mb-4 flex items-center gap-2"
-          >
-            ← Back to Dashboard
-          </button>
-          <h1 className="text-4xl font-bold text-gray-900 mb-2">AI Skin Analysis</h1>
-          <p className="text-gray-600">
-            Upload a clear photo of your skin concern for instant AI-powered analysis
-          </p>
+        <div className="chat-box" ref={chatBoxRef}>
+          {messages.map((msg, idx) => (
+            <div key={idx} className={`message ${msg.role}`}>
+              <div className="message-content" dangerouslySetInnerHTML={{ __html: msg.content.replace(/\n/g, '<br>') }} />
+            </div>
+          ))}
+          {loading && (
+            <div className="status-message">Assistant is analyzing data...</div>
+          )}
         </div>
 
-        <div className="grid lg:grid-cols-2 gap-8">
-          {/* Upload Section */}
-          <div className="bg-white rounded-lg shadow-md p-6">
-            <h2 className="text-xl font-bold text-gray-900 mb-4">Upload Image</h2>
+        <div className="input-area">
 
-            {!preview ? (
-              <div
-                {...getRootProps()}
-                className={`border-2 border-dashed rounded-lg p-12 text-center cursor-pointer transition ${
-                  isDragActive
-                    ? 'border-primary bg-primary/5'
-                    : 'border-gray-300 hover:border-primary'
-                }`}
+          {/* STEP 1: Initial Selection */}
+          {stage === 'selection' && (
+            <div className="initial-selection-container">
+              <div className="select-group">
+                <label htmlFor="issue-category">Select Issue Category:</label>
+                <select
+                  id="issue-category"
+                  value={category}
+                  onChange={(e) => {
+                    setCategory(e.target.value);
+                    setCondition(''); // Reset condition when category changes
+                  }}
+                >
+                  <option value="">-- Choose Category --</option>
+                  <option value="skin">Skin Issue</option>
+                  <option value="hair">Hair Issue</option>
+                </select>
+              </div>
+
+              {category && (
+                <div className="select-group">
+                  <label htmlFor="condition-type">Select Specific Condition:</label>
+                  <select
+                    id="condition-type"
+                    value={condition}
+                    onChange={(e) => setCondition(e.target.value)}
+                  >
+                    <option value="">-- Choose Condition --</option>
+                    {conditionOptions[category].map(opt => (
+                      <option key={opt} value={opt}>{opt}</option>
+                    ))}
+                  </select>
+                </div>
+              )}
+
+              <button
+                className="action-button start-button"
+                onClick={handleStartDiagnosis}
+                disabled={!category || !condition}
               >
-                <input {...getInputProps()} />
-                <Upload className="w-16 h-16 mx-auto mb-4 text-gray-400" />
-                {isDragActive ? (
-                  <p className="text-lg text-primary">Drop the image here...</p>
-                ) : (
-                  <>
-                    <p className="text-lg text-gray-700 mb-2">
-                      Drag & drop an image here, or click to select
-                    </p>
-                    <p className="text-sm text-gray-500">
-                      Supports: PNG, JPG, JPEG, WEBP
-                    </p>
-                  </>
-                )}
-              </div>
-            ) : (
-              <div>
-                <div className="relative rounded-lg overflow-hidden mb-4">
-                  <img
-                    src={preview}
-                    alt="Preview"
-                    className="w-full h-auto max-h-96 object-contain bg-gray-100"
-                  />
-                </div>
-                <div className="flex gap-4">
-                  <button
-                    onClick={handleReset}
-                    className="flex-1 px-4 py-3 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition"
-                    disabled={analyzing}
-                  >
-                    Choose Different Image
-                  </button>
-                  <button
-                    onClick={handleAnalyze}
-                    disabled={analyzing}
-                    className="flex-1 px-4 py-3 bg-primary text-white rounded-lg hover:bg-primary-dark transition disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
-                  >
-                    {analyzing ? (
-                      <>
-                        <LoadingSpinner size="sm" />
-                        <span>Analyzing...</span>
-                      </>
-                    ) : (
-                      'Analyze Image'
-                    )}
-                  </button>
-                </div>
-              </div>
-            )}
-
-            {/* Guidelines */}
-            <div className="mt-6 p-4 bg-blue-50 rounded-lg">
-              <h3 className="font-semibold text-gray-900 mb-2 flex items-center gap-2">
-                <ImageIcon className="w-5 h-5 text-primary" />
-                Photo Guidelines
-              </h3>
-              <ul className="text-sm text-gray-700 space-y-1">
-                <li>• Take photo in good lighting</li>
-                <li>• Focus clearly on the affected area</li>
-                <li>• Avoid blurry or dark images</li>
-                <li>• Keep the area clean and dry</li>
-              </ul>
+                Start Diagnosis
+              </button>
             </div>
-          </div>
+          )}
 
-          {/* Results Section */}
-          <div className="bg-white rounded-lg shadow-md p-6">
-            <h2 className="text-xl font-bold text-gray-900 mb-4">Analysis Results</h2>
-
-            {!result ? (
-              <div className="flex flex-col items-center justify-center h-64 text-gray-400">
-                <AlertCircle className="w-16 h-16 mb-4" />
-                <p className="text-center">
-                  Upload and analyze an image to see results here
-                </p>
-              </div>
-            ) : (
-              <div className="space-y-6">
-                {/* Confidence Score */}
-                <div className="p-4 bg-gradient-to-r from-primary/10 to-secondary/10 rounded-lg">
-                  <div className="flex items-center justify-between mb-2">
-                    <span className="font-semibold text-gray-900">Confidence Score</span>
-                    <span className="text-2xl font-bold text-primary">
-                      {Math.round(result.confidence * 100)}%
-                    </span>
-                  </div>
-                  <div className="w-full bg-gray-200 rounded-full h-2">
-                    <div
-                      className="bg-gradient-to-r from-primary to-secondary h-2 rounded-full transition-all"
-                      style={{ width: `${result.confidence * 100}%` }}
-                    ></div>
-                  </div>
-                </div>
-
-                {/* Detected Condition */}
-                <div className="border-l-4 border-primary pl-4">
-                  <h3 className="font-semibold text-gray-900 mb-2">Detected Condition</h3>
-                  <p className="text-lg text-gray-700">
-                    {result.result?.condition || 'Analysis in progress...'}
-                  </p>
-                </div>
-
-                {/* Description */}
-                {result.result?.description && (
-                  <div className="border-l-4 border-secondary pl-4">
-                    <h3 className="font-semibold text-gray-900 mb-2">Description</h3>
-                    <p className="text-gray-700">{result.result.description}</p>
-                  </div>
-                )}
-
-                {/* Recommendations */}
-                {result.result?.recommendations && (
-                  <div className="border-l-4 border-success pl-4">
-                    <h3 className="font-semibold text-gray-900 mb-2">Recommendations</h3>
-                    <p className="text-gray-700">{result.result.recommendations}</p>
-                  </div>
-                )}
-
-                {/* Disclaimer */}
-                <div className="p-4 bg-warning/10 border border-warning/30 rounded-lg">
-                  <p className="text-sm text-gray-700">
-                    <strong>Important:</strong> This AI analysis is for informational purposes only
-                    and should not replace professional medical advice. Please consult with a
-                    certified dermatologist for accurate diagnosis and treatment.
-                  </p>
-                </div>
-
-                {/* Actions */}
-                <div className="flex gap-4">
+          {/* STEP 2: Option-Based Chat */}
+          {stage === 'chat' && !loading && (
+            <div className="selection-input-container">
+              {currentQuestionStep < diagnosticQuestions.length && (
+                diagnosticQuestions[currentQuestionStep].options.map(optionText => (
                   <button
-                    onClick={() => navigate('/create-case')}
-                    className="flex-1 px-4 py-3 bg-secondary text-white rounded-lg hover:bg-secondary/90 transition"
+                    key={optionText}
+                    className="selection-button"
+                    onClick={() => handleAnswer(optionText, diagnosticQuestions[currentQuestionStep].key)}
                   >
-                    Create Case
+                    {optionText}
                   </button>
-                  <button
-                    onClick={() => navigate('/find-provider')}
-                    className="flex-1 px-4 py-3 bg-primary text-white rounded-lg hover:bg-primary-dark transition"
-                  >
-                    Find Dermatologist
-                  </button>
-                </div>
+                ))
+              )}
+            </div>
+          )}
+
+          {/* STEP 3: Image Upload */}
+          {stage === 'image_upload' && (
+            <div className="image-upload-row">
+              <div className="image-preview-container">
+                {previews.map((src, idx) => (
+                  <img key={idx} src={src} className="image-preview-thumb" alt="preview" />
+                ))}
               </div>
-            )}
-          </div>
+              <div className="upload-controls">
+                <input
+                  type="file"
+                  id="image-file"
+                  accept="image/*"
+                  multiple
+                  onChange={handleFileSelect}
+                  style={{ display: 'none' }}
+                  disabled={loading}
+                />
+                <label htmlFor="image-file" className="upload-label">
+                  Select Images (Max 3)
+                </label>
+                <button
+                  className="action-button upload-button"
+                  onClick={handleUploadAndAnalyze}
+                  disabled={selectedFiles.length === 0 || loading}
+                >
+                  {loading ? 'Analyzing...' : 'Analyze Images'}
+                </button>
+              </div>
+            </div>
+          )}
+
+          {/* STEP 4: Final Actions */}
+          {stage === 'analysis_complete' && (
+            <div className="final-actions-row">
+              {analysisResult?.recommendation_needed && (
+                <button
+                  className="action-button book-btn"
+                  onClick={handleBookAppointment}
+                >
+                  Book Appointment Now
+                </button>
+              )}
+              <button
+                className="action-button restart-btn"
+                onClick={startNewConversation}
+                style={{ flexGrow: analysisResult?.recommendation_needed ? 1 : 2 }}
+              >
+                Start New Conversation
+              </button>
+            </div>
+          )}
+
         </div>
       </div>
     </div>

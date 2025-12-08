@@ -32,7 +32,7 @@ export default function VisitHistory() {
       setLoading(false);
     }
   };
-  console.log(appointments)
+
   const upcomingAppointments = appointments.filter(
     (apt) => apt.status !== 'completed' && apt.status !== 'cancelled'
     // Simplified logic: anything not finished is "upcoming" or "active"
