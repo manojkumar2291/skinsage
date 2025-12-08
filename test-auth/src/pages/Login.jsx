@@ -91,7 +91,7 @@ export default function Login() {
   }, []);
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-primary/10 via-white to-secondary/10 flex items-center justify-center px-4 py-8">
+    <div className="min-h-screen bg-gradient-to-br from-primary/5 via-white to-secondary/5 flex items-center justify-center px-4 py-8 font-sans">
       {toast && (
         <Toast
           message={toast.message}
@@ -100,34 +100,37 @@ export default function Login() {
         />
       )}
 
-      <div className="max-w-md w-full">
+      <div className="max-w-md w-full animate-fadeIn">
         <div className="text-center mb-8">
-          <h1 className="text-4xl font-bold text-primary mb-2">SkinSage</h1>
-          <p className="text-gray-600">Sign in to your account</p>
+          <div className="inline-block p-3 rounded-full bg-primary/10 mb-4">
+            <Mail className="w-8 h-8 text-primary" />
+          </div>
+          <h1 className="text-4xl font-bold text-gray-900 mb-2 tracking-tight">Welcome Back</h1>
+          <p className="text-gray-600">Sign in to your SkinSage account</p>
         </div>
 
-        <div className="bg-white rounded-2xl shadow-xl p-8">
+        <div className="bg-white rounded-2xl shadow-xl p-8 border border-gray-100 backdrop-blur-sm">
           <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
             <div>
               <label htmlFor="username" className="block text-sm font-medium text-gray-700 mb-2">
                 Email Address
               </label>
-              <div className="relative">
-                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                  <Mail className="h-5 w-5 text-gray-400" />
+              <div className="relative group">
+                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none transition-colors group-focus-within:text-primary">
+                  <Mail className="h-5 w-5 text-gray-400 group-focus-within:text-primary" />
                 </div>
                 <input
                   {...register('username')}
                   type="email"
                   id="username"
                   className={`w-full pl-10 pr-4 py-3 border ${
-                    errors.username ? 'border-error' : 'border-gray-300'
-                  } rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent outline-none transition`}
+                    errors.username ? 'border-error' : 'border-gray-200'
+                  } rounded-xl focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none transition bg-gray-50 focus:bg-white`}
                   placeholder="you@example.com"
                 />
               </div>
               {errors.username && (
-                <p className="mt-1 text-sm text-error">{errors.username.message}</p>
+                <p className="mt-1 text-sm text-error animate-pulse">{errors.username.message}</p>
               )}
             </div>
 
@@ -135,48 +138,46 @@ export default function Login() {
               <label htmlFor="password" className="block text-sm font-medium text-gray-700 mb-2">
                 Password
               </label>
-              <div className="relative">
-                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                  <Lock className="h-5 w-5 text-gray-400" />
+              <div className="relative group">
+                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none transition-colors group-focus-within:text-primary">
+                  <Lock className="h-5 w-5 text-gray-400 group-focus-within:text-primary" />
                 </div>
                 <input
                   {...register('password')}
                   type={showPassword ? 'text' : 'password'}
                   id="password"
                   className={`w-full pl-10 pr-12 py-3 border ${
-                    errors.password ? 'border-error' : 'border-gray-300'
-                  } rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent outline-none transition`}
+                    errors.password ? 'border-error' : 'border-gray-200'
+                  } rounded-xl focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none transition bg-gray-50 focus:bg-white`}
                   placeholder="••••••••"
                 />
                 <button
                   type="button"
                   onClick={() => setShowPassword(!showPassword)}
-                  className="absolute inset-y-0 right-0 pr-3 flex items-center"
+                  className="absolute inset-y-0 right-0 pr-3 flex items-center text-gray-400 hover:text-gray-600 transition"
                 >
                   {showPassword ? (
-                    <EyeOff className="h-5 w-5 text-gray-400 hover:text-gray-600" />
+                    <EyeOff className="h-5 w-5" />
                   ) : (
-                    <Eye className="h-5 w-5 text-gray-400 hover:text-gray-600" />
+                    <Eye className="h-5 w-5" />
                   )}
                 </button>
               </div>
               {errors.password && (
-                <p className="mt-1 text-sm text-error">{errors.password.message}</p>
+                <p className="mt-1 text-sm text-error animate-pulse">{errors.password.message}</p>
               )}
             </div>
 
             <div className="flex items-center justify-between">
-              <div className="flex items-center">
+              <label className="flex items-center cursor-pointer">
                 <input
                   id="remember"
                   type="checkbox"
-                  className="h-4 w-4 text-primary focus:ring-primary border-gray-300 rounded"
+                  className="w-4 h-4 text-primary focus:ring-primary border-gray-300 rounded cursor-pointer"
                 />
-                <label htmlFor="remember" className="ml-2 block text-sm text-gray-700">
-                  Remember me
-                </label>
-              </div>
-              <Link to="/forgot-password" className="text-sm text-primary hover:text-primary-dark">
+                <span className="ml-2 text-sm text-gray-600">Remember me</span>
+              </label>
+              <Link to="/forgot-password" className="text-sm font-medium text-primary hover:text-primary-dark hover:underline">
                 Forgot password?
               </Link>
             </div>
@@ -184,11 +185,11 @@ export default function Login() {
             <button
               type="submit"
               disabled={loading}
-              className="w-full py-3 bg-primary text-white rounded-lg hover:bg-primary-dark transition font-semibold disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+              className="w-full py-3.5 bg-primary text-white rounded-xl hover:bg-primary-dark transition-all duration-200 font-semibold shadow-lg shadow-primary/30 hover:shadow-primary/50 disabled:opacity-70 disabled:cursor-not-allowed flex items-center justify-center gap-2 transform active:scale-[0.98]"
             >
               {loading ? (
                 <>
-                  <LoadingSpinner size="sm" />
+                  <LoadingSpinner size="sm" color="white" />
                   <span>Signing in...</span>
                 </>
               ) : (
