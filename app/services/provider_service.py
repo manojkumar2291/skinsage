@@ -1,7 +1,8 @@
 import json
 from fastapi import HTTPException
 from app.database.mysql_conn import get_db_connection as get_connection
-from app.schemas.provider import ProviderCreate
+from app.schemas.provider import ProviderCreate , ProviderUpdate
+from app.core.deps import get_current_user, Depends,role_required
 
 class ProviderService:
 
@@ -9,34 +10,24 @@ class ProviderService:
         conn = get_connection()
         cur = conn.cursor(dictionary=True)
 
-        # 1. Validate: Does this user exist?
-        cur.execute("SELECT id, role FROM users WHERE id=%s", (data.user_id,))
-        user = cur.fetchone()
-        if not user:
-            raise HTTPException(404, "User with this ID does not exist")
 
-        # 2. Validate: Is this user already a provider?
-        cur.execute("SELECT id FROM providers WHERE user_id=%s", (data.user_id,))
-        if cur.fetchone():
-            raise HTTPException(400, "This user is already a provider")
-
-        # 3. Serialize languages list to JSON string
+        
         languages_json = json.dumps(data.languages)
-
-        # 4. Insert data
+        cur.execute("insert into users (full_name,email,phone,password_hash,role,dob,gender,language_pref,is_verfied,google_id) values (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)",
+         (data.name,data.email,data.phone,None,"provider",data.dob,data.gender,data.language_pref,True,None))
+        user_id = cur.lastrowid
+      
         sql = """
             INSERT INTO providers 
-            (user_id,name, license_number, verification_status, specialty, 
+            (name,email, license_number, verification_status, specialty, 
              experience_years, languages, consultation_fee, bio, profile_photo)
-            VALUES (%s,%s, %s, %s, %s, %s, %s, %s, %s, %s)
+            VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s,%s)
         """
-        # Since Admin is creating it, we can default to 'pending' or 'verified'. 
-        # Usually, it starts as 'pending' until documents are double-checked, 
-        # or 'verified' if the admin has already checked them offline. 
-        # Let's stick to 'pending' as the default safety net.
+        
         values = (
-            data.user_id, 
+            user_id, 
             data.name,
+            data.email,
             data.license_number, 
             "pending", 
             data.specialty, 
@@ -67,7 +58,7 @@ class ProviderService:
         if not provider:
             raise HTTPException(404, "Provider not found")
         
-        # MySQL connector might return JSON column as a string, we need to parse it back to a list
+       
         if isinstance(provider['languages'], str):
              provider['languages'] = json.loads(provider['languages'])
 
@@ -79,9 +70,55 @@ class ProviderService:
         cur.execute("SELECT * FROM providers")
         providers = cur.fetchall()
 
-        # Parse JSON for all results
+       
         for p in providers:
             if isinstance(p['languages'], str):
                 p['languages'] = json.loads(p['languages'])
                 
         return providers
+    
+    def update_provider_details(self,
+        provider_data: ProviderUpdate,
+        
+       
+        current_user: dict = Depends(role_required("admin","provider"))
+        ):
+        db = Depends(get_connection)
+        if current_user.role not in ["provider", "admin"]:
+            raise HTTPException(status_code=403, detail="Not authorized")
+
+        cursor = db.cursor()
+    
+        # Find Provider ID linked to User ID
+        cursor.execute("SELECT id FROM providers WHERE user_id = %s", (current_user.id,))
+        if not cursor.fetchone():
+            raise HTTPException(status_code=404, detail="Provider profile not found")
+        
+        # Static Query for Provider
+        # Note: For 'languages' array, ensure your DB driver handles lists correctly (Psycopg2 does)
+        query = """
+            UPDATE providers
+            SET 
+                name = COALESCE(%s, name),
+                specialty = COALESCE(%s, specialty),
+                consultation_fee = COALESCE(%s, consultation_fee),
+                bio = COALESCE(%s, bio),
+                experience_years = COALESCE(%s, experience_years),
+                languages = COALESCE(%s, languages)
+            WHERE user_id = %s
+        """
+        
+        params = (
+            provider_data.name,
+            provider_data.specialty,
+            provider_data.consultation_fee,
+            provider_data.bio,
+            provider_data.experience_years,
+            provider_data.languages, # Pass list directly for Postgres
+            current_user.id
+        )
+
+        cursor.execute(query, params)
+        db.commit()
+
+        return {"msg": "Updated successfully", "status": "success"}

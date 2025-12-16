@@ -17,9 +17,9 @@ def sanitize_filename(name: str) -> str:
     Sanitizes a string to be safe for directory names.
     Example: "Skin Issue" -> "skin_issue", "Warts!" -> "warts"
     """
-    # Replace non-alphanumeric characters with underscores
+   
     clean_name = re.sub(r'[^a-zA-Z0-9]', '_', name)
-    # Remove multiple consecutive underscores
+    
     clean_name = re.sub(r'_+', '_', clean_name)
     return clean_name.strip('_').lower()
 
@@ -32,26 +32,24 @@ async def save_image_to_disk(image_bytes: bytes, original_filename: str, subfold
     if len(suffix) > 5 or suffix.lower() not in ['.png', '.jpg', '.jpeg']:
         suffix = '.jpg' 
 
-    # 1. Define the full directory path
+    
     target_dir = BASE_UPLOAD_DIR / subfolder
     
-    # 2. Create directory if it doesn't exist (parents=True creates intermediate folders)
+   
     if not target_dir.exists():
         target_dir.mkdir(parents=True, exist_ok=True)
 
     unique_filename = f"{secrets.token_urlsafe(8)}_{int(time.time())}{suffix.lower()}"
     file_path = target_dir / unique_filename
 
-    # 3. Write the file
+    
     await run_in_threadpool(file_path.write_bytes, image_bytes)
 
-    # 4. Return the web-accessible URL
-    # Note: We use forward slashes for URLs regardless of OS
     server_url_path = f"/static/{subfolder}/{unique_filename}".replace("//", "/")
     
     return unique_filename, server_url_path
 
-# ... (normalize_image_bytes and encode_image_to_base64_datauri remain unchanged) ...
+
 def normalize_image_bytes(image_bytes: bytes, max_side: int = 1024) -> bytes:
     img = Image.open(io.BytesIO(image_bytes))
     if img.mode in ("RGBA", "LA") or (img.mode == "P" and "transparency" in img.info):

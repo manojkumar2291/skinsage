@@ -28,18 +28,44 @@ class Settings(BaseSettings):
     OPENROUTER_URL: str = "https://openrouter.ai/api/v1/chat/completions"
     OPENROUTER_TIMEOUT: int = 120
 
-    # HuggingFace Validation Settings
+
+   #------------------------ LLM Settings (prod OpenAI Config) -----------------------   
+    # OPENAI_API_KEY: str 
+    # MODEL_NAME: str = "gpt-4o-mini"
+    # OPENAI_URL: str = "https://api.openai.com/v1/chat/completions"
+    # OPENAI_TIMEOUT: int = 120
+
+
     HUGGINGFACE_API_KEY: str
     HUGGINGFACE_MODEL_URL: str = "https://router.huggingface.co/hf-inference/models/google/vit-base-patch16-224"
 
-    # MySQL Settings
+    
     DB_HOST: str = "localhost"
     DB_PORT: str = "3306"
     DB_NAME: str = "skinsage_db"
     DB_USER: str = "root"
-    DB_PASSWORD: str = "" # MUST be set in .env
+    DB_PASSWORD: str = "" 
     SECRET_KEY: str # .env
     GOOGLE_CLIENT_ID: str # .env
+    RAZORPAY_KEY_ID: str
+    RAZORPAY_KEY_SECRET: str
+
+    # email settings
+    EMAIL_HOST:str = "webhosting2053.is.cc"
+    EMAIL_PORT :int= 465
+    EMAIL_USER: str  # .env
+    EMAIL_PASS: str  # .env
+
+    AGORA_APP_ID: str  # .env
+    AGORA_APP_CERTIFICATE: str  # .env
+
+    FRONTENDURL: str
+
+
+    AGORA_APP_CERTIFICATE: str  # .env
+    AGORA_APP_ID: str  # .env
+
+   
 
 
     ANALYSIS_SYSTEM_PROMPT: str = (
@@ -55,5 +81,9 @@ class Settings(BaseSettings):
         "6) **Disclaimer** (A clear disclaimer that this is for informational purposes only and not a replacement for professional medical advice).\n\n"
         "**CRITICAL OUTPUT RULE: Your final line MUST be a single, unambiguous key-value pair indicating medical urgency: Recommendation_Required: [Yes or No]**"
     )
+
+
+
+
 
 settings = Settings()

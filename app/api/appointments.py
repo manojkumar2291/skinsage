@@ -1,23 +1,26 @@
-from fastapi import APIRouter, Depends
-from typing import List
+from fastapi import APIRouter, Depends,BackgroundTasks
+from typing import List,Optional
 from app.schemas.appointment import AppointmentCreate, AppointmentResponse, AppointmentUpdate
 from app.services.appointment_service import AppointmentService
-from app.core.deps import get_current_user, role_required
+from app.core.deps import get_current_user
+
 
 router = APIRouter(tags=["Appointments"])
 service = AppointmentService()
 
-# 1. Request an Appointment (Patients)
-@router.post("/appointments/request", response_model=AppointmentResponse)
-def request_appointment(
-    data: AppointmentCreate, 
+
+@router.post("/appointments/reserve")
+
+def reserve_appointment(
+    data: AppointmentCreate,
     current_user: dict = Depends(get_current_user)
 ):
-    return service.request_appointment(patient_id=current_user['id'], data=data)
+    return service.reserve_appointment_slot(current_user['id'], data)
 
-# 2. List Appointments (Smart filter: Patients see theirs, Doctors see theirs)
+
 @router.get("/appointments", response_model=List[AppointmentResponse])
 def list_appointments(current_user: dict = Depends(get_current_user)):
+    print(current_user)
     return service.list_appointments(
         user_id=current_user['id'], 
         role=current_user.get('role', 'user')
@@ -43,6 +46,26 @@ def confirm_appointment(
     return service.update_status(
         appointment_id=appointment_id,
         data=data,
+        user_id=current_user['id'],
+        role=current_user.get('role', 'user')
+    )
+
+@router.post("/appointments/confirm")
+def confirm_payment(
+    reservation_id: int,
+    case_id: Optional[int] = None,
+    background_tasks: BackgroundTasks = None,
+    current_user: dict = Depends(get_current_user)
+):
+    return service.confirm_payment(reservation_id, case_id, background_tasks)
+
+@router.put("/appointments/{appointment_id}")
+def cancel_appointment(
+    appointment_id: int,
+    current_user: dict = Depends(get_current_user)
+):
+    return service.cancel_appointment(
+        appointment_id=appointment_id,
         user_id=current_user['id'],
         role=current_user.get('role', 'user')
     )

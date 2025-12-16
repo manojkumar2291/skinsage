@@ -46,11 +46,11 @@ class RefreshSchema(BaseModel):
     refresh_token: str
 
 class CompleteProfileSchema(BaseModel):
-    phone: str
-    dob: date
-    gender: Gender
-    language_pref: str = "en"
-   
+    full_name: str  
+    email: EmailStr 
+    dob: str        
+    gender: str     
+    language_pref: Optional[str] = "en"
 
 class ConsentUpdateSchema(BaseModel):
     consent_type: ConsentTypeEnum
@@ -71,3 +71,19 @@ class AuthResponse(BaseModel):
     token_type: str = "bearer"
     user: UserResponse
     profile_complete: Optional[bool] = True
+
+
+
+class OTPGenerateRequest(BaseModel):
+    identifier: str # Email or Phone
+
+class OTPVerifyRequest(BaseModel):
+    identifier: str
+    code: str
+
+class PasswordResetRequest(BaseModel):
+    email: EmailStr
+
+class PasswordResetConfirm(BaseModel):
+    token: str
+    new_password: str

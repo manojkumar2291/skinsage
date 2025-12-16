@@ -14,7 +14,7 @@ class CaseCreate(BaseModel):
     title: str
     symptoms: str
     ai_chat_id: Optional[int] = None  # Optional: Link to an existing chat
-    photos: List[str] = []            # Optional: List of image URLs
+    # photos: List[str] = []            # Optional: List of image URLs
 
 # INPUT: For updating status
 class CaseStatusUpdate(BaseModel):
@@ -27,6 +27,6 @@ class CaseResponse(BaseModel):
     ai_chat_id: Optional[int]
     title: str
     symptoms: str
-    photos: List[str] | str  # Handles both list or raw string from DB
+    # photos: List[str] | str  # Handles both list or raw string from DB
     status: CaseStatus
     created_at: datetime

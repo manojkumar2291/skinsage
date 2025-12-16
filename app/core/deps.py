@@ -21,13 +21,15 @@ def get_current_user(credentials: HTTPAuthorizationCredentials = Depends(oauth2_
 
     conn = get_db_connection()
     cur = conn.cursor(dictionary=True)
-    cur.execute("SELECT id, full_name, email, role FROM users WHERE id=%s", (user_id,))
+    cur.execute("SELECT * FROM users WHERE id=%s", (user_id,))
     user = cur.fetchone()
+    is_complete = all([user.get('phone'), user.get('dob'), user.get('gender')])
 
     if not user:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="User not found")
+    # print(user)
 
-    return user
+    return {**user, "profile_complete": is_complete}
 
 def role_required(*allowed_roles):
     def wrapper(current_user=Depends(get_current_user)):

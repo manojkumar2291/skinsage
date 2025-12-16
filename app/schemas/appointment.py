@@ -4,14 +4,14 @@ from enum import Enum
 from datetime import datetime
 
 class AppointmentStatus(str, Enum):
-    PENDING = "pending"
+    BOOKED = "booked"
     CONFIRMED = "confirmed"
     COMPLETED = "completed"
     CANCELLED = "cancelled"
 
 # INPUT: Patient requests an appointment
 class AppointmentCreate(BaseModel):
-    case_id: int
+    case_id: Optional[int] = None
     provider_id: int
     preferred_slot: datetime
 
@@ -19,12 +19,12 @@ class AppointmentCreate(BaseModel):
 class AppointmentUpdate(BaseModel):
     status: AppointmentStatus
     confirmed_slot: Optional[datetime] = None
-    video_link: Optional[str] = None
+    
 
 # OUTPUT: API Response
 class AppointmentResponse(BaseModel):
     id: int
-    case_id: int
+    case_id: Optional[int]= None
     patient_id: int
     provider_id: int
     preferred_slot: datetime

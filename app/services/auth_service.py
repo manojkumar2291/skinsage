@@ -1,4 +1,4 @@
-from fastapi import HTTPException
+from fastapi import HTTPException, Depends
 from google.oauth2 import id_token
 from google.auth.transport import requests
 from datetime import datetime
@@ -11,6 +11,7 @@ from app.core.security import (
     create_refresh_token,
     verify_token,
 )
+from app.core.deps import get_current_user
 from app.core.config import settings
 
 class AuthService:
@@ -64,7 +65,7 @@ class AuthService:
         cur.execute("UPDATE users SET refresh_token=%s WHERE id=%s", (refresh, user["id"]))
         conn.commit()
 
-        # Helper to check profile completion
+        
         is_complete = all([user.get('phone'), user.get('dob'), user.get('gender')])
 
         return {
@@ -99,10 +100,10 @@ class AuthService:
         profile_complete = False
 
         if not user:
-            # First-time login
+            
             dummy_password = "GOOGLE_USER_NO_PASSWORD"
             
-            # Default role is 'patient'
+            
             cur.execute("""
                 INSERT INTO users 
                 (full_name, email, google_id, password_hash, is_verified, role)
@@ -170,39 +171,30 @@ class AuthService:
 
     def complete_profile(self, user_id: int, data: CompleteProfileSchema):
         conn = get_connection()
-        cur = conn.cursor()
+        cur = conn.cursor(dictionary=True)
+        try:
+            cur.execute("SELECT id FROM users WHERE email=%s AND id != %s", (data.email, user_id))
+            if cur.fetchone():
+                raise HTTPException(400, "Email is already in use by another account")
 
-        sql = """
-            UPDATE users SET 
-                phone=%s,
-                dob=%s,
-                gender=%s,
-                language_pref=%s
-            WHERE id=%s
-        """
-        values = (
-            data.phone,
-            data.dob,
-            data.gender,
-            data.language_pref,
-            user_id
-        )
-
-        cur.execute(sql, values)
-        conn.commit()
-
-        return {"message": "Profile completed successfully"}
-
-    def update_consent(self, user_id: int, data: ConsentUpdateSchema):
-        conn = get_connection()
-        cur = conn.cursor()
-        
-        # Insert a new consent record
-        sql = """
-            INSERT INTO consent_type (user_id, consent_type, status, accepted_on)
-            VALUES (%s, %s, %s, %s)
-        """
-        cur.execute(sql, (user_id, data.consent_type, data.status, datetime.now()))
-        conn.commit()
             
-        return {"message": "Consent updated"}
+            cur.execute("""
+                UPDATE users 
+                SET full_name=%s, email=%s, dob=%s, gender=%s, language_pref=%s
+                WHERE id=%s
+            """, (
+                data.full_name, 
+                data.email, 
+                data.dob, 
+                data.gender, 
+                data.language_pref, 
+                user_id 
+            ))
+            conn.commit()
+
+            return {"msg": "Profile updated successfully", "profile_complete": True}
+
+        finally:
+            cur.close()
+            conn.close()
+    
