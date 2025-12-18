@@ -1,54 +1,33 @@
-# Python
+# --- Python & Virtual Environment ---
+# Ignore the virtual environment folder (it is huge and local to your machine)
+.venv/
+venv/
+env/
+
+# Ignore Python compiled bytecode (junk files)
 __pycache__/
 *.py[cod]
-*.pyo
-*.pyd
-*.pdb
-*.pkl
-*.sqlite3
+*$py.class
 
-# Environments
+# --- Environment Variables (CRITICAL) ---
+# NEVER commit your API keys or database passwords to GitHub
 .env
-venv/
-.venv/
-ENV/
-env/
-*.env
+.env.local
 
-# VSCode
+# --- User Uploads ---
+# Ignore actual files uploaded by users, but keep the folder structure
+uploads/*
+!uploads/.gitkeep
+
+# --- IDE & System Files ---
+# Ignore VS Code or Mac system files
 .vscode/
-.settings/
-
-# FastAPI uploads
-uploads/
-media/
-static/
-
-# Bytecode
-*.log
-*.pot
-*.pycache/
-
-# OS files
+.idea/
 .DS_Store
-Thumbs.db
 
-# Pytest / coverage
-.pytest_cache/
-.coverage
-htmlcov/
-
-# MySQL dumps
-#*.sql
-!tables.sql  # allow your schema file
-
-# Node modules (if any frontend inside project)
-node_modules/
-
-# Build
-dist/
-build/
-
-# Git
-*.swp
-*.swo
+# --- Database Data (Optional) ---
+# You usually keep 'table.sql' (schema), but ignore large data dumps
+# If 'skinsagetablesdata.sql' contains real user data, ignore it:
+skinsagetablesdata.sql
+nginx
+docker-compose.yml

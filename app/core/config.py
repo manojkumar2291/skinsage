@@ -40,11 +40,11 @@ class Settings(BaseSettings):
     HUGGINGFACE_MODEL_URL: str = "https://router.huggingface.co/hf-inference/models/google/vit-base-patch16-224"
 
     
-    DB_HOST: str = "localhost"
-    DB_PORT: str = "3306"
-    DB_NAME: str = "skinsage_db"
-    DB_USER: str = "root"
-    DB_PASSWORD: str = "" 
+    DB_HOST: str 
+    DB_PORT: str 
+    DB_NAME: str 
+    DB_USER: str 
+    DB_PASSWORD: str  
     SECRET_KEY: str # .env
     GOOGLE_CLIENT_ID: str # .env
     RAZORPAY_KEY_ID: str

@@ -106,19 +106,19 @@ def verify_otp(data: OTPVerifyRequest):
         cursor.execute("UPDATE otps SET is_verified=1 WHERE id=%s", (otp_record['id'],))
         
        
-        phone_number = data.identifier
-        cursor.execute("SELECT * FROM users WHERE phone=%s", (phone_number,))
+        email= data.identifier
+        cursor.execute("SELECT * FROM users WHERE phone=%s", (email,))
         user = cursor.fetchone()
         
         
         if not user:
             cursor.execute("""
-                INSERT INTO users (phone, password_hash, is_verified, role)
+                INSERT INTO users (email, password_hash, is_verified, role)
                 VALUES (%s, 'OTP_USER_PENDING', 1, 'patient')
-            """, (phone_number,))
+            """, (email,))
             conn.commit()
             
-            cursor.execute("SELECT * FROM users WHERE phone=%s", (phone_number,))
+            cursor.execute("SELECT * FROM users WHERE email=%s", (email,))
             user = cursor.fetchone()
         
         # 4. Check Profile Completeness
@@ -218,3 +218,27 @@ def forgot_password(
     finally:
         cursor.close()
         conn.close()
+
+@router.post("/change-password")
+def change_password(
+    data: PasswordResetConfirm, 
+    current_user: dict = Depends(get_current_user)
+):
+    conn = get_db_connection()
+    cursor = conn.cursor(dictionary=True)
+    try:
+        # Update user's password directly (using existing user ID)
+        new_hash = hash_password(data.new_password)
+        cursor.execute("UPDATE users SET password_hash=%s WHERE id=%s", (new_hash, current_user['id']))
+        conn.commit()
+        return {"msg": "Password changed successfully"}
+    finally:
+        cursor.close()
+        conn.close()
+
+@router.post("/logout")
+def logout(current_user: dict = Depends(get_current_user)):
+    # In a stateless JWT system, true logout requires a blacklist. 
+    # For now, we just acknowledge the request. 
+    # Frontend should delete the token.
+    return {"msg": "Logged out successfully"}

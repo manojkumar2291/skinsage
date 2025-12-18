@@ -101,3 +101,37 @@ class PaymentService:
         conn.commit()
 
         return {"status": "refunded", "refund_id": refund['id']}
+
+    def process_webhook(self, body: bytes, signature: str):
+        try:
+            # Verify signature
+            self.client.utility.verify_webhook_signature(
+                body.decode('utf-8'),
+                signature,
+                settings.RAZORPAY_KEY_SECRET # Use webhook secret if different, but usually same for small apps
+            )
+        except Exception as e:
+             raise HTTPException(status_code=400, detail="Invalid Webhook Signature")
+
+        # Parse Event
+        import json
+        event = json.loads(body)
+        
+        if event['event'] == 'payment.captured':
+            payment = event['payload']['payment']['entity']
+            order_id = payment['order_id']
+            # payment_id = payment['id'] # unused?
+            
+            conn = get_connection()
+            cur = conn.cursor(dictionary=True)
+            try:
+                cur.execute(
+                    "UPDATE payments SET status='success' WHERE gateway_txn_id=%s", 
+                    (order_id,)
+                )
+                conn.commit()
+            finally:
+                cur.close()
+                conn.close()
+        
+        return {"status": "ok"}

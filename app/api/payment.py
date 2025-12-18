@@ -26,3 +26,14 @@ def initiate_refund(
 ):
    
     return service.refund_payment(payment_id=data.payment_id, amount=data.amount)
+
+from fastapi import Request, Header
+
+@router.post("/payments/webhook")
+async def payment_webhook(request: Request, x_razorpay_signature: str = Header(None)):
+    if not x_razorpay_signature:
+         # Some gateways might send signature in body or query, but standard is header
+         pass 
+
+    body = await request.body()
+    return service.process_webhook(body, x_razorpay_signature)

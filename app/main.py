@@ -42,13 +42,14 @@ from app.api.user import router as user_router
 from apscheduler.schedulers.background import BackgroundScheduler
 from app.services.remainder_service import send_reminder_emails
 from app.api.content import router as content_router
+from app.core.config import settings
 
 
 from app.database import mysql_conn
 
 
 
-mysql_conn.initialize_db()
+# mysql_conn.initialize_db()
 
 
 static_dir = Path("uploads")
@@ -61,13 +62,10 @@ static_dir.mkdir(exist_ok=True)
 app.mount("/uploads", StaticFiles(directory="uploads"), name="uploads")
 
 # 4. CORS Configuration
-origins = [
-    "http://localhost:5173",      
-    "http://127.0.0.1:5501", 
-    "https://1k7bh55m-5173.inc1.devtunnels.ms",
-    "https://migrative-zoe-laboredly.ngrok-free.dev",
-    "https://skinsage-quev.vercel.app"
-]
+if "," in settings.FRONTENDURL:
+    origins = settings.FRONTENDURL.split(",")
+else:
+    origins = [settings.FRONTENDURL]
 
 app.add_middleware(
     CORSMiddleware,
