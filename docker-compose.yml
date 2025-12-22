@@ -1,0 +1,40 @@
+version: '3.8'
+
+services:
+  # Service 1: The Database
+  db:
+    image: mysql:8.0
+    container_name: mysqldb
+    restart: always
+    environment:
+      MYSQL_DATABASE: coolify_db
+      MYSQL_USER: user
+      MYSQL_PASSWORD: password
+      MYSQL_ROOT_PASSWORD: rootpassword
+    volumes:
+      - db_data:/var/lib/mysql
+    # Fix for Python authentication issues
+    command: --default-authentication-plugin=mysql_native_password
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
+      interval: 5s
+      retries: 5
+
+  # Service 2: Your FastAPI Backend
+  backend:
+    build: .  # This tells Coolify to build the Dockerfile in this folder
+    container_name: fastapibackend
+    ports:
+      - "8000:8000"
+    depends_on:
+      - db
+    environment:
+      # CRITICAL: We use the service name 'db' as the host
+      - DB_HOST=db
+      - DB_PORT=3306
+      - DB_USER=user
+      - DB_PASS=password
+      - DB_NAME=coolify_db
+
+volumes:
+  db_data:
