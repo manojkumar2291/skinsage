@@ -73,7 +73,13 @@ class AuthService:
             "refresh_token": refresh,
             "token_type": "bearer",
             "profile_complete": is_complete,
-            "user": user
+            "user": {
+                "id": user["id"],
+                "email": user["email"],
+                "full_name": user["full_name"],
+                "role": user["role"],
+                "profile_complete": is_complete
+            }
         }
 
     def google_login(self, token: str):
@@ -138,7 +144,13 @@ class AuthService:
             "refresh_token": refresh,
             "token_type": "bearer",
             "profile_complete": profile_complete,
-            "user": user
+            "user": {
+                "id": user["id"],
+                "email": user["email"],
+                "full_name": user["full_name"],
+                "role": user["role"],
+                "profile_complete": profile_complete
+            }
         }
 
     def refresh_tokens(self, refresh_token: str):
@@ -166,7 +178,13 @@ class AuthService:
             "access_token": access, 
             "refresh_token": new_refresh, 
             "token_type": "bearer",
-            "user": user 
+            "user": {
+                "id": user["id"],
+                "email": user["email"],
+                "full_name": user.get("full_name"), 
+                "role": user["role"],
+                # Refresh might not check profile complete, omit or None
+            } 
         }
 
     def complete_profile(self, user_id: int, data: CompleteProfileSchema):

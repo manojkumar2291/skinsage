@@ -1,8 +1,9 @@
 import json
 import re
-import uuid  # <--- Added to generate Guest IDs
+import uuid
 from typing import List, Tuple
 from pathlib import Path
+from datetime import datetime
 
 # Added Request and Response for cookie handling
 from fastapi import APIRouter, File, UploadFile, Form, HTTPException, Depends, Request, Response 
@@ -215,6 +216,27 @@ async def analyze_endpoint(
             
             chat_id = cur.lastrowid
             conn.commit()
+            chat_id = cur.lastrowid
+            
+            # --- AUTO-CREATE CASE ---
+            if user_id:
+                try:
+                    case_sql = """
+                        INSERT INTO cases 
+                        (user_id, ai_chat_id, title, symptoms, status, created_at)
+                        VALUES (%s, %s, %s, %s, 'open', NOW())
+                    """
+                    # Use a default title or derive from summary
+                    case_title = f"AI Analysis - {datetime.now().strftime('%Y-%m-%d')}"
+                    case_symptoms = "Auto-generated from AI Analysis"
+                    
+                    cur.execute(case_sql, (user_id, chat_id, case_title, case_symptoms))
+                    conn.commit()
+                    print(f"DEBUG: Auto-created Case for User {user_id}, Chat {chat_id}")
+                except Exception as ex:
+                    print(f"ERROR: Failed to auto-create case: {ex}")
+            # ------------------------
+
             cur.close()
             conn.close()
             return chat_id

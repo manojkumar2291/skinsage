@@ -194,16 +194,6 @@ CREATE TABLE `payments` (
   CONSTRAINT `fk_payment_user` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
-CREATE TABLE `prescriptions` (
-  `id` int NOT NULL AUTO_INCREMENT,
-  `appointment_id` int NOT NULL,
-  `medications` json NOT NULL,
-  `notes` text,
-  `created_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP,
-  PRIMARY KEY (`id`),
-  UNIQUE KEY `appointment_id` (`appointment_id`),
-  CONSTRAINT `fk_presc_appt` FOREIGN KEY (`appointment_id`) REFERENCES `appointments` (`id`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
 CREATE TABLE `provider_documents` (
   `id` int NOT NULL AUTO_INCREMENT,

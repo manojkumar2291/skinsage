@@ -35,7 +35,7 @@ from app.api.provider import router as provider_router
 from app.api.cases import router as case_router
 from app.api.appointments import router as appointment_router
 from app.api.payment import router as payment_router
-from app.api.notification import router as notification_router
+# from app.api.notification import router as notification_router
 from app.api.visits import router as visits_router
 from app.api.videocall import router as videocall_router
 from app.api.user import router as user_router
@@ -61,15 +61,11 @@ static_dir.mkdir(exist_ok=True)
 
 app.mount("/uploads", StaticFiles(directory="uploads"), name="uploads")
 
-# 4. CORS Configuration
-if "," in settings.FRONTENDURL:
-    origins = settings.FRONTENDURL.split(",")
-else:
-    origins = [settings.FRONTENDURL]
+# CORS Configuration
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=origins,
+    allow_origins=settings.FRONTENDURL,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],

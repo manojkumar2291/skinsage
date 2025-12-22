@@ -136,8 +136,14 @@ def verify_otp(data: OTPVerifyRequest):
         return {
             "access_token": access,
             "refresh_token": refresh,
-            "profile_complete": is_complete, # Frontend checks this to redirect
-            "user": user
+            "profile_complete": is_complete, 
+            "user": {
+                "id": user["id"],
+                "email": user["email"],
+                "full_name": user["full_name"],
+                "role": user["role"],
+                "profile_complete": is_complete
+            }
         }
 
     finally:

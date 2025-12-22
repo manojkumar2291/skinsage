@@ -83,14 +83,14 @@ class ProviderService:
        
         current_user: dict = Depends(role_required("admin","provider"))
         ):
-        db = Depends(get_connection)
-        if current_user.role not in ["provider", "admin"]:
+        if current_user['role'] not in ["provider", "admin"]:
             raise HTTPException(status_code=403, detail="Not authorized")
 
+        db = get_connection()
         cursor = db.cursor()
     
         # Find Provider ID linked to User ID
-        cursor.execute("SELECT id FROM providers WHERE user_id = %s", (current_user.id,))
+        cursor.execute("SELECT id FROM providers WHERE user_id = %s", (current_user['id'],))
         if not cursor.fetchone():
             raise HTTPException(status_code=404, detail="Provider profile not found")
         
@@ -115,7 +115,7 @@ class ProviderService:
             provider_data.bio,
             provider_data.experience_years,
             provider_data.languages, # Pass list directly for Postgres
-            current_user.id
+            current_user['id']
         )
 
         cursor.execute(query, params)

@@ -7,10 +7,21 @@ from app.schemas.case import CaseCreate
 class CaseService:
 
     def create_case(self, user_id: int, data: CaseCreate):
+        print(f"DEBUG: START create_case {data}")
         conn = get_connection()
         cur = conn.cursor(dictionary=True)
 
-        # 1. Serialize photos list to JSON string for MySQL
+        # 1. Validate AI Chat Ownership if provided
+        if data.ai_chat_id:
+            print(f"DEBUG: Checking Chat {data.ai_chat_id}")
+            conn.commit() # Ensure we see latest data
+            cur.execute("SELECT user_id FROM ai_chats WHERE id=%s", (data.ai_chat_id,))
+            chat = cur.fetchone()
+            print(f"DEBUG: Chat Found: {chat}")
+            if not chat:
+                 raise HTTPException(404, "Linked AI Chat not found")
+            if chat['user_id'] != user_id:
+                 raise HTTPException(403, "You cannot link an AI Chat that does not belong to you")
       
 
         # 2. Insert Query

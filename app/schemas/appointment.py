@@ -1,7 +1,7 @@
 from pydantic import BaseModel
 from typing import Optional
 from enum import Enum
-from datetime import datetime
+from datetime import datetime, date, time
 
 class AppointmentStatus(str, Enum):
     BOOKED = "booked"
@@ -13,7 +13,8 @@ class AppointmentStatus(str, Enum):
 class AppointmentCreate(BaseModel):
     case_id: Optional[int] = None
     provider_id: int
-    preferred_slot: datetime
+    preferred_date: date
+    preferred_time: time
 
 # INPUT: Provider confirms or updates status
 class AppointmentUpdate(BaseModel):

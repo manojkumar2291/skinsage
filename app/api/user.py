@@ -16,7 +16,7 @@ def update_user_details(
     cursor = db.cursor()
     
     # 1. Authorization
-    if current_user.id != user_id and current_user.role != "admin":
+    if current_user['id'] != user_id and current_user['role'] != "admin":
         raise HTTPException(status_code=403, detail="Not authorized")
 
     # 2. Check if user exists
@@ -35,7 +35,6 @@ def update_user_details(
             gender = COALESCE(%s, gender),
             language_pref = COALESCE(%s, language_pref)
         WHERE id = %s
-        RETURNING id, full_name, email, phone, dob, gender, language_pref
     """
     
     # We pass the values from the Pydantic model directly
@@ -50,9 +49,11 @@ def update_user_details(
     )
 
     cursor.execute(query, params)
-    updated_user = cursor.fetchone()
     db.commit()
-
+    
+    # Fetch updated user
+    cursor.execute("SELECT id, full_name, email, phone, dob, gender, language_pref FROM users WHERE id = %s", (user_id,))
+    updated_user = cursor.fetchone()
     return {
         "id": updated_user[0],
         "full_name": updated_user[1],

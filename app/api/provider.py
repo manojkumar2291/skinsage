@@ -29,8 +29,6 @@ def list_providers():
 
 @router.get("/providers/{provider_id}", response_model=ProviderResponse)
 def get_provider(provider_id: int):
-    # Pass logic to service (assumed existing from previous step)
-    # You need to ensure get_provider_by_id exists in your service
     return service.get_provider_by_id(provider_id)
 
 
@@ -165,9 +163,6 @@ def get_provider_slots(
     db = get_db()
     cursor = db.cursor()
     
-    # FIX: Use boolean integers (1/0) or TRUE/FALSE depending on driver, 
-    # but MySQL handles 'TRUE' as 1 fine.
-    # NOW() works in MySQL.
     query = """
         SELECT id, provider_id, start_time, end_time, is_available, is_booked 
         FROM appointment_slots 
@@ -217,7 +212,7 @@ def upload_provider_docs(
     # 1. Save File
     upload_dir = "uploads/documents"
     os.makedirs(upload_dir, exist_ok=True)
-    file_path = f"{upload_dir}/{current_user.id}_{type}_{file.filename}"
+    file_path = f"{upload_dir}/{current_user['id']}_{type}_{file.filename}"
     
     with open(file_path, "wb") as buffer:
         shutil.copyfileobj(file.file, buffer)
@@ -227,7 +222,7 @@ def upload_provider_docs(
     cursor = conn.cursor(dictionary=True)
     try:
         # Get Provider ID
-        cursor.execute("SELECT id FROM providers WHERE user_id=%s", (current_user.id,))
+        cursor.execute("SELECT id FROM providers WHERE user_id=%s", (current_user['id'],))
         provider = cursor.fetchone()
         
         cursor.execute("""

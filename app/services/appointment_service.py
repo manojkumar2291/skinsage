@@ -15,8 +15,10 @@ class AppointmentService:
         cur = conn.cursor(dictionary=True)
 
         try:
-            # 1. Convert preferred_slot to IST
-            slot_dt = data.preferred_slot
+            # 1. Combine Date and Time
+            slot_dt = datetime.combine(data.preferred_date, data.preferred_time)
+            
+            # 2. Convert to IST if naive
             if slot_dt.tzinfo is None:
                 slot_dt = slot_dt.replace(tzinfo=ZoneInfo("UTC"))
             

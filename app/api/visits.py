@@ -5,12 +5,11 @@ from datetime import datetime
 from app.database.mysql_conn import get_db_connection
 from app.schemas.visits import VisitSummaryCreate, SummaryUploadResponse, VisitSummaryDTO, ChatStartResponse, ChatMessageCreate, ChatMessageResponse
 import json
-from app.schemas.prescription import PrescriptionCreate, PrescriptionResponse
 from app.core.deps import get_current_user
 router = APIRouter()
 
 
-@router.post("/visits/{appointment_id}/summary", response_model=SummaryUploadResponse)
+@router.post("/{appointment_id}/summary", response_model=SummaryUploadResponse)
 def upload_visit_summary(appointment_id: int, data: VisitSummaryCreate):
     conn = get_db_connection()
     if not conn:
@@ -49,7 +48,7 @@ def upload_visit_summary(appointment_id: int, data: VisitSummaryCreate):
         conn.close()
 
 
-@router.get("/visits/{appointment_id}", response_model=VisitSummaryDTO)
+@router.get("/{appointment_id}", response_model=VisitSummaryDTO)
 def get_visit_summary(appointment_id: int):
     conn = get_db_connection()
     if not conn:
@@ -79,7 +78,7 @@ def get_visit_summary(appointment_id: int):
         conn.close()
 
 
-@router.post("/visits/{appointment_id}/follow-up", response_model=ChatStartResponse)
+@router.post("/{appointment_id}/follow-up", response_model=ChatStartResponse)
 def start_follow_up_chat(appointment_id: int):
     conn = get_db_connection()
     if not conn:
@@ -115,40 +114,9 @@ def start_follow_up_chat(appointment_id: int):
         cursor.close()
         conn.close()
 
-@router.post("/visits/{appointment_id}/prescription", response_model=PrescriptionResponse)
-def create_prescription(
-    appointment_id: int, 
-    data: PrescriptionCreate,
-    current_user = Depends(get_current_user)
-):
-    # Only Provider
-    if current_user['role'] != 'provider':
-        raise HTTPException(403, "Only doctors can prescribe")
 
-    conn = get_db_connection()
-    cursor = conn.cursor(dictionary=True)
-    try:
-        # Convert list of objects to JSON string for MySQL
-        meds_json = json.dumps([m.dict() for m in data.medications])
 
-        cursor.execute("""
-            INSERT INTO prescriptions (appointment_id, medications, notes)
-            VALUES (%s, %s, %s)
-        """, (appointment_id, meds_json, data.notes))
-        
-        new_id = cursor.lastrowid
-        conn.commit()
 
-        return {
-            "id": new_id,
-            "appointment_id": appointment_id,
-            "medications": data.medications,
-            "notes": data.notes,
-            "created_at": datetime.now()
-        }
-    finally:
-        cursor.close()
-        conn.close()
 @router.get("/chats/{chat_id}/messages", response_model=List[ChatMessageResponse])
 def get_chat_messages(
     chat_id: int, 
@@ -157,9 +125,6 @@ def get_chat_messages(
     conn = get_db_connection()
     cursor = conn.cursor(dictionary=True)
     try:
-        # A. Security Check: Is the user part of this appointment?
-        # We join visit_chats -> appointments to find patient_id and provider_id
-        # Note: We need to find the user_id of the provider from the providers table
         cursor.execute("""
             SELECT 
                 a.patient_id, 
