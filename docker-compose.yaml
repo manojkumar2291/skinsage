@@ -27,5 +27,5 @@ services:
       # ⚠️ Use the same variable here so they match
       - DB_PASS=${DB_PASSWORD}
     
-  volumes:
-    db_data:
+volumes:
+  db_data:
