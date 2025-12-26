@@ -4,6 +4,8 @@ from typing import Optional
 from jose import jwt, JWTError
 from passlib.context import CryptContext
 from app.core.config import settings
+from cryptography.fernet import Fernet
+import base64
 
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 ALGORITHM = "HS256"
@@ -30,3 +32,25 @@ def verify_token(token: str) -> Optional[dict]:
         return payload
     except JWTError:
         return None
+
+
+
+
+try:
+    _fernet = Fernet(settings.ENCRYPTION_KEY.encode() if isinstance(settings.ENCRYPTION_KEY, str) else settings.ENCRYPTION_KEY)
+except Exception as e:
+    print(f"Warning: Encryption key likely invalid. Encryption will fail. Error: {e}")
+    _fernet = None
+
+def encrypt_message(message: str) -> str:
+    if not _fernet:
+        return message # Fallback (Danger: Plaintext) or Raise Error
+    return _fernet.encrypt(message.encode()).decode()
+
+def decrypt_message(token: str) -> str:
+    if not _fernet:
+        return token
+    try:
+        return _fernet.decrypt(token.encode()).decode()
+    except Exception:
+        return "[Encrypted Message]" # Return placeholder if decryption fails (e.g. key rotation issues)

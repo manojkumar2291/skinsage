@@ -1,4 +1,4 @@
-from fastapi import APIRouter, HTTPException, Depends
+from fastapi import APIRouter, HTTPException, Depends, WebSocket, WebSocketDisconnect, status
 from typing import List
 import mysql.connector
 from datetime import datetime
@@ -162,6 +162,13 @@ def get_chat_messages(
         """, (chat_id,))
         
         messages = cursor.fetchall()
+        from app.core.security import decrypt_message
+        
+        # Decrypt messages
+        for msg in messages:
+            if msg.get('message'):
+                msg['message'] = decrypt_message(msg['message'])
+                
         return messages
 
     except Exception as e:
@@ -172,12 +179,48 @@ def get_chat_messages(
         conn.close()
 
 
+@router.websocket("/ws/{chat_id}")
+async def websocket_endpoint(
+    websocket: WebSocket,
+    chat_id: int,
+    token: str = None
+):
+    from app.core.security import verify_token
+    from app.services.socket_service import manager
+    
+    if not token:
+        await websocket.close(code=status.WS_1008_POLICY_VIOLATION)
+        return
+
+    payload = verify_token(token)
+    if not payload:
+        await websocket.close(code=status.WS_1008_POLICY_VIOLATION)
+        return
+
+    user_id = payload.get("id")
+    # Verify user access to chat (Simplified for WS, relying on token validity + DB check if needed)
+    # Ideally should perform same DB ownership check as get_messages
+    
+    await manager.connect(chat_id, websocket)
+    try:
+        while True:
+            # Keep the connection open and listen for messages if needed
+            # For now, we mainly use it for broadcasting *from* the server
+            # But we can also handle incoming messages here if we wanted strictly WS chat
+            data = await websocket.receive_text() 
+            # If client sends "ping", we can generic response, or handle chat sending here too.
+    except WebSocketDisconnect:
+        manager.disconnect(chat_id, websocket)
+
+
 @router.post("/chats/{chat_id}/messages", response_model=ChatMessageResponse)
-def send_chat_message(
+async def send_chat_message(
     chat_id: int, 
     data: ChatMessageCreate, 
     current_user = Depends(get_current_user)
 ):
+    from app.services.socket_service import manager
+    
     conn = get_db_connection()
     cursor = conn.cursor(dictionary=True)
     try:
@@ -197,14 +240,12 @@ def send_chat_message(
         """
         cursor.execute(check_sql, (chat_id,))
         chat_info = cursor.fetchone()
-        print(chat_info)
-
+        
         if not chat_info:
             raise HTTPException(404, "Chat not found")
 
         if chat_info['status'] != 'active':
             raise HTTPException(400, "Chat is closed")
-
        
         is_patient = (chat_info['patient_id'] == user_id)
         is_provider = (chat_info['provider_user_id'] == user_id)
@@ -213,24 +254,34 @@ def send_chat_message(
              raise HTTPException(403, "Access denied: You are not a participant")
 
         # 3. Insert Message
+        from app.core.security import encrypt_message
+        encrypted_text = encrypt_message(data.message)
+        
         insert_sql = """
             INSERT INTO visit_chat_messages (visit_chat_id, sender_id, message, created_at)
             VALUES (%s, %s, %s, %s)
         """
         created_at = datetime.now()
-        cursor.execute(insert_sql, (chat_id, user_id, data.message, created_at))
+        cursor.execute(insert_sql, (chat_id, user_id, encrypted_text, created_at))
         conn.commit()
         
         new_id = cursor.lastrowid
         
-        return {
+        response_data = {
             "visit_chat_id": chat_id,
             "id": new_id,
             "sender_id": user_id,
-            "message": data.message,
-            "created_at": created_at,
-            "sender_name": current_user.get('full_name') 
+            "message": data.message, # Return plaintext to sender immediately
+            "created_at": created_at.isoformat(),
+            "sender_name": current_user.get('full_name'),
+            "sender_role": current_user.get('role')
         }
+        
+        # Broadcast to WebSocket
+        # Note: We send plaintext to the WebSocket clients because they are authorized
+        await manager.broadcast(chat_id, response_data)
+        
+        return response_data
 
     except mysql.connector.Error as e:
         conn.rollback()

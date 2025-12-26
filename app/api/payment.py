@@ -32,7 +32,6 @@ from fastapi import Request, Header
 @router.post("/payments/webhook")
 async def payment_webhook(request: Request, x_razorpay_signature: str = Header(None)):
     if not x_razorpay_signature:
-         # Some gateways might send signature in body or query, but standard is header
          pass 
 
     body = await request.body()

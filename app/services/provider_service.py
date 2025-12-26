@@ -1,4 +1,6 @@
 import json
+from typing import Optional, List
+from decimal import Decimal
 from fastapi import HTTPException
 from app.database.mysql_conn import get_db_connection as get_connection
 from app.schemas.provider import ProviderCreate , ProviderUpdate
@@ -64,10 +66,39 @@ class ProviderService:
 
         return provider
     
-    def list_providers(self):
+    def list_providers(self, limit: int = 10, offset: int = 0, name: Optional[str] = None, 
+                       specialty: Optional[str] = None, min_price: Optional[Decimal] = None, 
+                       max_price: Optional[Decimal] = None, min_experience: Optional[int] = None):
         conn = get_connection()
         cur = conn.cursor(dictionary=True)
-        cur.execute("SELECT * FROM providers")
+        
+        query = "SELECT * FROM providers WHERE 1=1"
+        params = []
+        
+        if name:
+            query += " AND name LIKE %s"
+            params.append(f"%{name}%")
+            
+        if specialty:
+            query += " AND specialty LIKE %s"
+            params.append(f"%{specialty}%")
+            
+        if min_price:
+            query += " AND consultation_fee >= %s"
+            params.append(min_price)
+            
+        if max_price:
+            query += " AND consultation_fee <= %s"
+            params.append(max_price)
+            
+        if min_experience:
+            query += " AND experience_years >= %s"
+            params.append(min_experience)
+            
+        query += " LIMIT %s OFFSET %s"
+        params.extend([limit, offset])
+        
+        cur.execute(query, tuple(params))
         providers = cur.fetchall()
 
        

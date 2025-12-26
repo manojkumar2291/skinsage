@@ -60,6 +60,7 @@ class Settings(BaseSettings):
     AGORA_APP_CERTIFICATE: str  # .env
 
     FRONTENDURL: str
+    ENCRYPTION_KEY: str
 
 
     AGORA_APP_CERTIFICATE: str  # .env

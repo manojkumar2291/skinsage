@@ -1,5 +1,6 @@
 from fastapi import APIRouter, Depends, HTTPException, Form, File, UploadFile
 from typing import List,Optional
+from decimal import Decimal
 from app.schemas.provider import ProviderCreate, ProviderResponse , ProviderUpdate, SlotGenerationRequest, SlotUpdateRequest, SlotResponse, AdminVerifyProvider
 from datetime import datetime, date, time, timedelta
 from app.services.provider_service import ProviderService 
@@ -24,8 +25,16 @@ def create_provider(
 # --- PUBLIC / AUTHENTICATED ROUTES ---
 
 @router.get("/providers", response_model=List[ProviderResponse])
-def list_providers():
-    return service.list_providers()
+def list_providers(
+    limit: int = 10,
+    offset: int = 0,
+    name: Optional[str] = None,
+    specialty: Optional[str] = None,
+    min_price: Optional[Decimal] = None,
+    max_price: Optional[Decimal] = None,
+    min_experience: Optional[int] = None
+):
+    return service.list_providers(limit, offset, name, specialty, min_price, max_price, min_experience)
 
 @router.get("/providers/{provider_id}", response_model=ProviderResponse)
 def get_provider(provider_id: int):
