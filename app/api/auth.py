@@ -96,19 +96,22 @@ def verify_otp(data: OTPVerifyRequest):
     conn = get_db_connection()
     cursor = conn.cursor(dictionary=True)
     try:
+        print("Verifying OTP for:", data.identifier)
         # 1. Verify OTP
         cursor.execute("SELECT * FROM otps WHERE identifier=%s AND code=%s AND is_verified=0 AND expires_at > NOW()", (data.identifier, data.code))
         otp_record = cursor.fetchone()
+        print("OTP Record Found:", otp_record)
         
         if not otp_record:
             raise HTTPException(400, "Invalid or expired OTP")
 
         cursor.execute("UPDATE otps SET is_verified=1 WHERE id=%s", (otp_record['id'],))
         
-       
+        print("OTP verified for:", data.identifier)
         email= data.identifier
-        cursor.execute("SELECT * FROM users WHERE phone=%s", (email,))
+        cursor.execute("SELECT * FROM users WHERE email=%s", (email,))
         user = cursor.fetchone()
+        print("USER RECORD:",user)
         
         
         if not user:
