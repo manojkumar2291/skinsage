@@ -5,7 +5,8 @@ from typing import Optional
 class OrderCreate(BaseModel):
     amount: float 
     currency: str = "INR"
-    appointment_id: str
+    appointment_id: Optional[str] = None
+    shop_order_id: Optional[int] = None
 
 class PaymentVerify(BaseModel):
     razorpay_order_id: str

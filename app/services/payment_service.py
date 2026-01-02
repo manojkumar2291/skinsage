@@ -31,15 +31,15 @@ class PaymentService:
      
         sql = """
             INSERT INTO payments 
-            (user_id, appointment_id, amount, currency, status, gateway_txn_id, created_at)
-            VALUES (%s, %s, %s, %s, %s, %s, NOW())
+            (user_id, appointment_id, shop_order_id, amount, currency, status, gateway_txn_id, created_at)
+            VALUES (%s, %s, %s, %s, %s, 'initiated', %s, NOW())
         """
         cur.execute(sql, (
             user_id, 
             data.appointment_id, 
+            data.shop_order_id,
             data.amount, 
             data.currency, 
-            'initiated', 
             order['id']
         ))
         conn.commit()
@@ -76,6 +76,13 @@ class PaymentService:
             WHERE gateway_txn_id=%s
         """
         cur.execute(sql, (data.razorpay_payment_id, data.razorpay_order_id))
+        
+        # Check if shop order and update status
+        cur.execute("SELECT shop_order_id FROM payments WHERE gateway_txn_id=%s", (data.razorpay_order_id,))
+        row = cur.fetchone()
+        if row and row['shop_order_id']:
+            cur.execute("UPDATE shop_orders SET payment_status='paid', order_status='confirmed' WHERE id=%s", (row['shop_order_id'],))
+            
         conn.commit()
 
         return {"status": "success", "message": "Payment Verified"}
@@ -98,6 +105,7 @@ class PaymentService:
             "UPDATE payments SET status='refunded', refund_status='processed' WHERE gateway_txn_id=%s", 
             (payment_id,)
         )
+        # TODO: Handle Shop Order Refund status if needed, but usually manual or via admin
         conn.commit()
 
         return {"status": "refunded", "refund_id": refund['id']}
@@ -129,6 +137,13 @@ class PaymentService:
                     "UPDATE payments SET status='success' WHERE gateway_txn_id=%s", 
                     (order_id,)
                 )
+                
+                # Check for shop order
+                cur.execute("SELECT shop_order_id FROM payments WHERE gateway_txn_id=%s", (order_id,))
+                row = cur.fetchone()
+                if row and row['shop_order_id']:
+                     cur.execute("UPDATE shop_orders SET payment_status='paid' WHERE id=%s", (row['shop_order_id'],))
+                     
                 conn.commit()
             finally:
                 cur.close()

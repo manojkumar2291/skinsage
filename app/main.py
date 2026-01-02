@@ -45,7 +45,7 @@ from app.api.content import router as content_router
 from app.core.config import settings
 
 # shoping cart routes
-# from app.api.shop import router as shop_router
+from app.api.shop import router as shop_router
 
 
 
@@ -124,7 +124,7 @@ app.include_router(videocall_router, prefix="/api/videocall", tags=["Video Call"
 app.include_router(visits_router, prefix="/api/visits", tags=["Visits"])
 app.include_router(content_router, prefix="/api/content", tags=["Content Management"] )
 
-# app.include_router(shop_router, prefix="/api", tags=["E-commerce"])
+app.include_router(shop_router, prefix="/api", tags=["E-commerce"])
 
 
 scheduler = BackgroundScheduler()
