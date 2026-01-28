@@ -263,3 +263,6 @@ CREATE TABLE `visit_summaries` (
   UNIQUE KEY `appointment_id` (`appointment_id`),
   CONSTRAINT `visit_summaries_ibfk_1` FOREIGN KEY (`appointment_id`) REFERENCES `appointments` (`id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+
+
+ALTER TABLE users ADD COLUMN microsoft_id VARCHAR(255) UNIQUE DEFAULT NULL;
