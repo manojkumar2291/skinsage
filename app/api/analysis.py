@@ -16,6 +16,10 @@ from app.schemas.analysis import AIChatResponse
 from app.core.config import settings
 from app.database.mysql_conn import get_db_connection as get_connection
 from app.services import image_proc, llm_proc
+from collections import namedtuple
+
+# Define the helper class here
+Credentials = namedtuple('Credentials', ['credentials'])
 
 router = APIRouter()
 
@@ -73,12 +77,16 @@ async def analyze_endpoint(
 
     try:
         auth_header = request.headers.get("Authorization")
+        print("Authorization header:", auth_header)
+
         if auth_header:
             token = auth_header.replace("Bearer ", "")
-            curr_user = await run_in_threadpool(get_current_user, token) 
+            token_obj = Credentials(credentials=token)
+            curr_user = await run_in_threadpool(get_current_user, token_obj) 
             if curr_user:
                 user_id = curr_user['id']
-    except Exception:
+    except Exception as e:
+        print("Error getting current user:", e)
         pass 
 
     if not user_id:

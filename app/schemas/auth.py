@@ -42,12 +42,16 @@ class LoginSchema(BaseModel):
 class GoogleLoginSchema(BaseModel):
     token: str
 
+class MicrosoftLoginSchema(BaseModel):
+    token: str
+
 class RefreshSchema(BaseModel):
     refresh_token: str
 
 class CompleteProfileSchema(BaseModel):
-    full_name: str  
-    email: EmailStr 
+  
+    phone: str
+
     dob: str        
     gender: str     
     language_pref: Optional[str] = "en"

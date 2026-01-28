@@ -3,6 +3,7 @@ from app.schemas.auth import (
     RegisterSchema, 
     LoginSchema, 
     GoogleLoginSchema, 
+    MicrosoftLoginSchema,
     RefreshSchema, 
     CompleteProfileSchema, 
     AuthResponse,
@@ -40,6 +41,10 @@ def login(data: LoginSchema):
 
 def google_login(data: GoogleLoginSchema):
     return service.google_login(data.token)
+
+@router.post("/microsoft-login", response_model=AuthResponse)
+def microsoft_login(data: MicrosoftLoginSchema):
+    return service.microsoft_login(data.token)
 
 @router.post("/refresh", response_model=AuthResponse)
 def refresh_token(payload: RefreshSchema):
