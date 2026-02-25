@@ -100,9 +100,7 @@ class ProviderService:
             query += " AND experience_years >= %s"
             params.append(min_experience)
             
-        if availability == 'now':
-            query += " AND id IN (SELECT provider_id FROM appointment_slots WHERE is_available=1 AND is_booked=0 AND start_time <= NOW() AND end_time > NOW())"
-        elif availability == 'today':
+        if availability == 'today':
             query += " AND id IN (SELECT provider_id FROM appointment_slots WHERE is_available=1 AND is_booked=0 AND DATE(start_time) = CURDATE())"
         elif availability == 'tomorrow':
             query += " AND id IN (SELECT provider_id FROM appointment_slots WHERE is_available=1 AND is_booked=0 AND DATE(start_time) = CURDATE() + INTERVAL 1 DAY)"

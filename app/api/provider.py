@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, HTTPException, Form, File, UploadFile
+from fastapi import APIRouter, Depends, HTTPException, Form, File, UploadFile, Query
 from typing import List,Optional
 from decimal import Decimal
 from app.schemas.provider import ProviderCreate, ProviderResponse , ProviderUpdate, SlotGenerationRequest, SlotUpdateRequest, SlotResponse, AdminVerifyProvider
@@ -33,7 +33,7 @@ def list_providers(
     min_price: Optional[Decimal] = None,
     max_price: Optional[Decimal] = None,
     min_experience: Optional[int] = None,
-    availability: Optional[str] = None
+    availability: str = Query(default=None, description="Filter: 'now', 'today', 'tomorrow', 'this_week', 'this_month', or a specific date 'YYYY-MM-DD'")
 ):
     return service.list_providers(limit, offset, name, specialty, min_price, max_price, min_experience, availability)
 
