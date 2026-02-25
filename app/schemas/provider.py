@@ -19,7 +19,7 @@ class ProviderCreate(BaseModel):
     gender: Optional[str] = None
     language_pref: Optional[str] = None
     license_number: str
-    specialty: str
+    specialty: List[str]
     experience_years: int
     languages: List[str]
     consultation_fee: Decimal
@@ -37,10 +37,10 @@ class AdminVerifyProvider(BaseModel):
 
 class ProviderResponse(BaseModel):
     id: int
-    name:str
+    name: str
     email: EmailStr
     license_number: str
-    specialty: str
+    specialty: List[str] | str
     verification_status: VerificationStatus
     experience_years: int
     languages: List[str] | str
@@ -50,7 +50,7 @@ class ProviderResponse(BaseModel):
 
 class ProviderUpdate(BaseModel):
     name: Optional[str] = None
-    specialty: Optional[str] = None
+    specialty: Optional[List[str]] = None
     consultation_fee: Optional[float] = None
     bio: Optional[str] = None
     profile_photo: Optional[str] = None

@@ -108,24 +108,30 @@ class AuthService:
         profile_complete = False
 
         if not user:
-            
             # Generate a random, unusable password and hash it
             random_password = secrets.token_urlsafe(32)
             hashed_password = hash_password(random_password)
             
-            
             cur.execute("""
                 INSERT INTO users 
-                (full_name, email, google_id, password_hash, is_verified, role)
-                VALUES (%s,%s,%s,%s,%s,%s)
-            """, (fullname, email, google_id, hashed_password, True, "patient"))
+                (full_name, email, password_hash, is_verified, role)
+                VALUES (%s,%s,%s,%s,%s)
+            """, (fullname, email, hashed_password, True, "patient"))
             
             conn.commit()
             
             # Fetch the new user
             cur.execute("SELECT * FROM users WHERE email=%s", (email,))
             user = cur.fetchone()
+            
+            cur.execute("INSERT INTO user_oauth (user_id, provider, provider_id) VALUES (%s, %s, %s)", (user['id'], 'google', google_id))
+            conn.commit()
         else:
+            cur.execute("SELECT id FROM user_oauth WHERE user_id=%s AND provider='google'", (user['id'],))
+            if not cur.fetchone():
+                cur.execute("INSERT INTO user_oauth (user_id, provider, provider_id) VALUES (%s, %s, %s)", (user['id'], 'google', google_id))
+                conn.commit()
+                
             profile_complete = all([
                 user.get("phone"),
                 user.get("dob"),
@@ -183,8 +189,8 @@ class AuthService:
         cur = conn.cursor(dictionary=True)
 
         # 3. Check/Create User
-        # Check by email OR microsoft_id
-        cur.execute("SELECT * FROM users WHERE email=%s OR microsoft_id=%s", (email, ms_id))
+        # Check by email OR user_oauth
+        cur.execute("SELECT u.* FROM users u LEFT JOIN user_oauth o ON u.id = o.user_id WHERE u.email=%s OR (o.provider='microsoft' AND o.provider_id=%s)", (email, ms_id))
         user = cur.fetchone()
 
         profile_complete = False
@@ -197,19 +203,23 @@ class AuthService:
             
             cur.execute("""
                 INSERT INTO users 
-                (full_name, email, microsoft_id, password_hash, is_verified, role)
-                VALUES (%s, %s, %s, %s, %s, %s)
-            """, (fullname, email, ms_id, hashed_password, True, "patient"))
+                (full_name, email, password_hash, is_verified, role)
+                VALUES (%s, %s, %s, %s, %s)
+            """, (fullname, email, hashed_password, True, "patient"))
             
             conn.commit()
             
             # Fetch the new user
             cur.execute("SELECT * FROM users WHERE email=%s", (email,))
             user = cur.fetchone()
+            
+            cur.execute("INSERT INTO user_oauth (user_id, provider, provider_id) VALUES (%s, %s, %s)", (user['id'], 'microsoft', ms_id))
+            conn.commit()
         else:
-             # Update microsoft_id if missing (linking accounts)
-            if not user.get("microsoft_id"):
-                 cur.execute("UPDATE users SET microsoft_id=%s WHERE id=%s", (ms_id, user["id"]))
+             # Update user_oauth if missing (linking accounts)
+            cur.execute("SELECT id FROM user_oauth WHERE user_id=%s AND provider='microsoft'", (user['id'],))
+            if not cur.fetchone():
+                 cur.execute("INSERT INTO user_oauth (user_id, provider, provider_id) VALUES (%s, %s, %s)", (user['id'], 'microsoft', ms_id))
                  conn.commit()
             
             profile_complete = all([

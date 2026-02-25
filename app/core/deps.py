@@ -27,6 +27,8 @@ def get_current_user(credentials: HTTPAuthorizationCredentials = Depends(oauth2_
 
     if not user:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="User not found")
+        
+    user.pop("password_hash", None)
     # print(user)
 
     return {**user, "profile_complete": is_complete}

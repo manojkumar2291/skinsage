@@ -20,6 +20,7 @@ class UserUpdate(BaseModel):
     dob: Optional[date] = None
     gender: Optional[str] = None
     language_pref: Optional[str] = None
+    profile_photo: Optional[str] = None
 
 class UserResponse(UserUpdate):
     id: int

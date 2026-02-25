@@ -81,7 +81,8 @@ def call_openrouter_model(messages: list) -> requests.Response:
     payload = {
         "model": settings.MODEL_NAME,
         "messages": messages,
-        "temperature": 0.5
+        "temperature": 0.5,
+        "max_tokens": 4000
     }
 
     return requests.post(settings.OPENROUTER_URL, headers=headers, json=payload, timeout=settings.OPENROUTER_TIMEOUT)

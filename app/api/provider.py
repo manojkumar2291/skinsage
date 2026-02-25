@@ -32,9 +32,10 @@ def list_providers(
     specialty: Optional[str] = None,
     min_price: Optional[Decimal] = None,
     max_price: Optional[Decimal] = None,
-    min_experience: Optional[int] = None
+    min_experience: Optional[int] = None,
+    availability: Optional[str] = None
 ):
-    return service.list_providers(limit, offset, name, specialty, min_price, max_price, min_experience)
+    return service.list_providers(limit, offset, name, specialty, min_price, max_price, min_experience, availability)
 
 @router.get("/providers/{provider_id}", response_model=ProviderResponse)
 def get_provider(provider_id: int):
