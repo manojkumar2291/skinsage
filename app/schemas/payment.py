@@ -5,7 +5,7 @@ from typing import Optional
 class OrderCreate(BaseModel):
     amount: float 
     currency: str = "INR"
-    appointment_id: Optional[str] = None
+    appointment_id: Optional[int] = None
     shop_order_id: Optional[int] = None
 
 class PaymentVerify(BaseModel):

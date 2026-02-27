@@ -13,11 +13,22 @@ class PaymentService:
         conn = get_connection()
         cur = conn.cursor(dictionary=True)
 
-        
         amount_paise = int(data.amount * 100)
 
         try:
-            
+            # If this is for an appointment, verify it
+            if data.appointment_id:
+                cur.execute(
+                    "SELECT id, status FROM appointments WHERE id=%s AND patient_id=%s", 
+                    (data.appointment_id, user_id)
+                )
+                appt = cur.fetchone()
+                
+                if not appt:
+                    raise HTTPException(status_code=404, detail="Appointment not found.")
+                if appt['status'] != 'pending_payment':
+                    raise HTTPException(status_code=400, detail="Appointment is not awaiting payment.")
+
             order_data = {
                 "amount": amount_paise,
                 "currency": data.currency,
@@ -25,19 +36,30 @@ class PaymentService:
                 "payment_capture": 1 # Auto capture
             }
             order = self.client.order.create(data=order_data)
+        except HTTPException as he:
+            raise he
         except Exception as e:
+            import traceback
+            print("Error creating Razorpay order:")
+            traceback.print_exc()
             raise HTTPException(status_code=502, detail=f"Razorpay Error: {str(e)}")
 
-     
         sql = """
             INSERT INTO payments 
             (user_id, appointment_id, shop_order_id, amount, currency, status, gateway_txn_id, created_at)
             VALUES (%s, %s, %s, %s, %s, 'initiated', %s, NOW())
         """
-        cur.execute(sql, (
-            user_id, 
+        print( user_id, 
             data.appointment_id, 
             data.shop_order_id,
+            data.amount, 
+            data.currency, 
+            order['id'])
+
+        cur.execute(sql, (
+            user_id, 
+            data.appointment_id if data.appointment_id else None, 
+            data.shop_order_id if data.shop_order_id else None,
             data.amount, 
             data.currency, 
             order['id']
@@ -64,12 +86,10 @@ class PaymentService:
             }
             self.client.utility.verify_payment_signature(params_dict)
         except razorpay.errors.SignatureVerificationError:
-           
             cur.execute("UPDATE payments SET status='failed' WHERE gateway_txn_id=%s", (data.razorpay_order_id,))
             conn.commit()
             raise HTTPException(status_code=400, detail="Invalid Payment Signature")
 
-       
         sql = """
             UPDATE payments 
             SET status='success', gateway_txn_id=%s 
@@ -78,10 +98,25 @@ class PaymentService:
         cur.execute(sql, (data.razorpay_payment_id, data.razorpay_order_id))
         
         # Check if shop order and update status
-        cur.execute("SELECT shop_order_id FROM payments WHERE gateway_txn_id=%s", (data.razorpay_order_id,))
+        cur.execute("SELECT shop_order_id, appointment_id FROM payments WHERE gateway_txn_id=%s", (data.razorpay_order_id,))
         row = cur.fetchone()
-        if row and row['shop_order_id']:
-            cur.execute("UPDATE shop_orders SET payment_status='paid', order_status='confirmed' WHERE id=%s", (row['shop_order_id'],))
+        
+        if row:
+            if row['shop_order_id']:
+                cur.execute("UPDATE shop_orders SET payment_status='paid', order_status='confirmed' WHERE id=%s", (row['shop_order_id'],))
+            
+            if row['appointment_id']:
+                appointment_id = row['appointment_id']
+                # Mark appointment as confirmed
+                cur.execute("UPDATE appointments SET status='confirmed' WHERE id=%s", (appointment_id,))
+                
+                # Lock in the slot permanently
+                cur.execute("""
+                    UPDATE appointment_slots slots
+                    JOIN appointments appt ON appt.provider_id = slots.provider_id AND appt.preferred_slot = slots.start_time
+                    SET slots.is_booked=1, slots.is_onhold=0, slots.is_available=0
+                    WHERE appt.id = %s
+                """, (appointment_id,))
             
         conn.commit()
 
@@ -139,10 +174,24 @@ class PaymentService:
                 )
                 
                 # Check for shop order
-                cur.execute("SELECT shop_order_id FROM payments WHERE gateway_txn_id=%s", (order_id,))
+                cur.execute("SELECT shop_order_id, appointment_id FROM payments WHERE gateway_txn_id=%s", (order_id,))
                 row = cur.fetchone()
-                if row and row['shop_order_id']:
-                     cur.execute("UPDATE shop_orders SET payment_status='paid' WHERE id=%s", (row['shop_order_id'],))
+                if row:
+                    if row['shop_order_id']:
+                        cur.execute("UPDATE shop_orders SET payment_status='paid' WHERE id=%s", (row['shop_order_id'],))
+                    
+                    if row['appointment_id']:
+                        appointment_id = row['appointment_id']
+                        # Mark appointment as confirmed
+                        cur.execute("UPDATE appointments SET status='confirmed' WHERE id=%s", (appointment_id,))
+                        
+                        # Lock in the slot permanently
+                        cur.execute("""
+                            UPDATE appointment_slots slots
+                            JOIN appointments appt ON appt.provider_id = slots.provider_id AND appt.preferred_slot = slots.start_time
+                            SET slots.is_booked=1, slots.is_onhold=0, slots.is_available=0
+                            WHERE appt.id = %s
+                        """, (appointment_id,))
                      
                 conn.commit()
             finally:

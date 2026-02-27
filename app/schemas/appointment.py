@@ -5,6 +5,7 @@ from datetime import datetime, date, time
 
 class AppointmentStatus(str, Enum):
     BOOKED = "booked"
+    PENDING_PAYMENT = "pending_payment"
     CONFIRMED = "confirmed"
     COMPLETED = "completed"
     CANCELLED = "cancelled"

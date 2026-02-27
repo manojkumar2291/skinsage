@@ -9,13 +9,14 @@ router = APIRouter(tags=["Appointments"])
 service = AppointmentService()
 
 
-@router.post("/appointments/reserve")
-
-def reserve_appointment(
+@router.post("/appointments/book")
+def book_appointment(
     data: AppointmentCreate,
+    background_tasks: BackgroundTasks,
     current_user: dict = Depends(get_current_user)
 ):
-    return service.reserve_appointment_slot(current_user['id'], data)
+    """Initiates the booking and creates a pending_payment appointment."""
+    return service.create_pending_appointment(current_user['id'], data, background_tasks)
 
 
 @router.get("/appointments", response_model=List[AppointmentResponse])
@@ -50,7 +51,7 @@ def confirm_appointment(
         role=current_user.get('role', 'user')
     )
 
-@router.post("/appointments/confirm")
+@router.patch("/appointments/confirm")
 def confirm_payment(
     reservation_id: int,
     case_id: Optional[int] = None,

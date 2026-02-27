@@ -315,4 +315,34 @@ class AuthService:
         finally:
             cur.close()
             conn.close()
-    
+
+    def update_consent(self, user_id: int, data: ConsentUpdateSchema):
+        conn = get_connection()
+        cur = conn.cursor(dictionary=True)
+        try:
+            # Check if consent already exists
+            cur.execute("""
+                SELECT id FROM consent_type 
+                WHERE user_id=%s AND consent_type=%s
+            """, (user_id, data.consent_type.value))
+            existing_consent = cur.fetchone()
+
+            if existing_consent:
+                # Update existing consent
+                cur.execute("""
+                    UPDATE consent_type 
+                    SET status=%s, accepted_on=NOW()
+                    WHERE id=%s
+                """, (data.status.value, existing_consent['id']))
+            else:
+                # Insert new consent
+                cur.execute("""
+                    INSERT INTO consent_type (user_id, consent_type, status, accepted_on)
+                    VALUES (%s, %s, %s, NOW())
+                """, (user_id, data.consent_type.value, data.status.value))
+            
+            conn.commit()
+            return {"msg": "Consent updated successfully"}
+        finally:
+            cur.close()
+            conn.close()
