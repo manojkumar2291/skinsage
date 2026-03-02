@@ -213,11 +213,11 @@ async def analyze_endpoint(
     try:
         response_llm = await run_in_threadpool(llm_proc.call_openrouter_model, analysis_messages) # Renamed var to avoid conflict
     except requests.RequestException as e:
-        raise HTTPException(status_code=502, detail=f"API request failed: {str(e)}")
+        raise HTTPException(status_code=400, detail=f"OpenRouter API request failed: {str(e)}")
 
     if response_llm.status_code != 200:
         error_detail = response_llm.text[:500] 
-        raise HTTPException(status_code=502, detail=f"Model API error: {response_llm.status_code} - {error_detail}")
+        raise HTTPException(status_code=400, detail=f"Model Provider API error: {response_llm.status_code} - {error_detail}")
 
     data = response_llm.json()
     raw_analysis = data.get('choices', [{}])[0].get('message', {}).get('content', "I couldn't complete the analysis.")
