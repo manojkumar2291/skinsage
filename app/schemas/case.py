@@ -11,7 +11,7 @@ class CaseStatus(str, Enum):
 
 # INPUT: Data sent to create a case
 class CaseCreate(BaseModel):
-    title: str
+    title: Optional[str] = None
     symptoms: str
     ai_chat_id: Optional[int] = None  # Optional: Link to an existing chat
     # photos: List[str] = []            # Optional: List of image URLs

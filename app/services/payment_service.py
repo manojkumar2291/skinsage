@@ -140,7 +140,6 @@ class PaymentService:
             "UPDATE payments SET status='refunded', refund_status='processed' WHERE gateway_txn_id=%s", 
             (payment_id,)
         )
-        # TODO: Handle Shop Order Refund status if needed, but usually manual or via admin
         conn.commit()
 
         return {"status": "refunded", "refund_id": refund['id']}
