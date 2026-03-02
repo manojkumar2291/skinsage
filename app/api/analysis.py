@@ -49,6 +49,13 @@ def extract_category_and_path(messages_list: list) -> Tuple[str, str]:
     pattern = r"Category:\s*(.*?),\s*Condition:\s*(.*)"
 
     for msg in messages_list:
+        # Sometimes msg might be a string representation of a dict
+        if isinstance(msg, str):
+            try:
+                msg = json.loads(msg)
+            except:
+                continue
+                
         content = msg.get("content", "")
         if "Category:" in content and "Condition:" in content:
             match = re.search(pattern, content, re.IGNORECASE)
@@ -110,10 +117,28 @@ async def analyze_endpoint(
     valid_images_payload = [] 
 
     for i, file in enumerate(image_files):
-        image_bytes = await file.read()
-        await file.seek(0) 
+        try:
+            image_bytes = await file.read()
+        except Exception as e:
+            print(f"ERROR: Failed reading file {file.filename}: {e}")
+            raise HTTPException(status_code=400, detail=f"Failed reading file {file.filename}")
+            
+        # Very important: When form-data gets parsed, sometimes empty file inputs 
+        # get sent by clients.
+        if not image_bytes or len(image_bytes) == 0:
+            print(f"WARNING: File {file.filename} is empty (0 bytes). Skipping.")
+            continue
+            
+        print(f"DEBUG: Read {len(image_bytes)} bytes from {file.filename}")
 
-        processed_image = image_proc.normalize_image_bytes(image_bytes)
+        try:
+            processed_image = image_proc.normalize_image_bytes(image_bytes)
+        except Exception as e:
+            print(f"CRITICAL ERROR: Failed to normalize image {file.filename}: {e}")
+            raise HTTPException(
+                status_code=400, 
+                detail=f"Uploaded file '{file.filename}' is not a valid or readable image."
+            )
 
         is_valid, validation_msg = llm_proc.validate_image_is_dermatological(
             processed_image, 
@@ -131,6 +156,9 @@ async def analyze_endpoint(
             "filename": file.filename or f"upload_{i}.jpg",
             "processed": processed_image
         })
+
+    if not valid_images_payload:
+        raise HTTPException(status_code=400, detail="No valid images were provided in the upload.")
 
     print(f"📂 Validation passed. Saving {len(valid_images_payload)} images to: uploads/{subfolder_path}") 
     
@@ -155,10 +183,22 @@ async def analyze_endpoint(
         )
         vision_model_content.append({"type": "image_url", "image_url": {"url": image_data_uri}})
 
+    def get_msg_role(m):
+        if isinstance(m, str):
+            try: m = json.loads(m)
+            except: return ""
+        return m.get('role', '')
+
+    def get_msg_content(m):
+        if isinstance(m, str):
+            try: m = json.loads(m)
+            except: return str(m)
+        return m.get('content', '')
+
     user_prompt_text = (
         "=== USER'S COMPLETE SYMPTOM HISTORY ===\n"
         "The following is the structured conversation history containing the user's condition selection and diagnostic answers:\n\n"
-        + "\n".join([f"- {msg['role'].upper()}: {msg['content']}" for msg in messages_json if msg['role'] == 'user']) +
+        + "\n".join([f"- {get_msg_role(msg).upper()}: {get_msg_content(msg)}" for msg in messages_json if get_msg_role(msg) == 'user']) +
         "\n\n=== END OF HISTORY ===\n\n"
         "Now, analyze the images based on the provided history and the structured system prompt."
     )
@@ -213,7 +253,7 @@ async def analyze_endpoint(
                 (
                     user_id,    # Can be None now
                     guest_id,   # Can be None now
-                    "\n".join([msg['content'] for msg in messages_json if msg['role'] == 'user']),
+                    "\n".join([get_msg_content(msg) for msg in messages_json if get_msg_role(msg) == 'user']),
                     analysis_text,
                     summary_text,
                     red_flag,
