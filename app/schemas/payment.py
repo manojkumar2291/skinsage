@@ -24,6 +24,7 @@ class OrderResponse(BaseModel):
     amount: float
     currency: str
     key_id: str
+    appointment_id: Optional[int] = None
 
 class PaymentStatusResponse(BaseModel):
     status: str

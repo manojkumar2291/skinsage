@@ -9,6 +9,8 @@ from app.database.mysql_conn import get_db_connection as get_connection
 from app.schemas.appointment import AppointmentCreate, AppointmentUpdate, AppointmentStatus
 from app.utils.email_templetes import booking_confirmation_template, appointment_reminder_template
 from app.services.email_service import send_email_sync
+from app.services.payment_service import PaymentService
+from app.schemas.payment import OrderCreate
 
 # --- BACKGROUND TASK FOR 7-MINUTE EXPIRATION ---
 async def expire_pending_appointment(appointment_id: int, provider_id: int, formatted_slot: str):
@@ -93,10 +95,18 @@ class AppointmentService:
                 formatted_slot=formatted_slot
             )
             
-            return {
-                "message": "Appointment initiated. Proceed to payment within 7 minutes.",
-                "appointment_id": appointment_id,
-            }
+            # --- CONSOLIDATED PAYMENT CREATION ---
+            cur.execute("SELECT consultation_fee FROM providers WHERE id=%s", (data.provider_id,))
+            provider_row = cur.fetchone()
+            fee = provider_row['consultation_fee'] if provider_row else 0.0
+
+            # Direct Call to Payment Service
+            payment_svc = PaymentService() 
+            order_data = OrderCreate(amount=float(fee), currency="INR", appointment_id=appointment_id)
+            razorpay_order = payment_svc.create_order(patient_id, order_data)
+            razorpay_order["appointment_id"] = appointment_id
+
+            return razorpay_order
 
         except mysql.connector.Error as db_err:
             conn.rollback()

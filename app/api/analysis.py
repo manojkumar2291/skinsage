@@ -276,7 +276,7 @@ async def analyze_endpoint(
                     """
                     # Use a default title or derive from summary
                     case_title = f"AI Analysis - {datetime.now().strftime('%Y-%m-%d')}"
-                    case_symptoms = "Auto-generated from AI Analysis"
+                    case_symptoms = "\n".join([get_msg_content(msg) for msg in messages_json if get_msg_role(msg) == 'user'])
                     
                     cur.execute(case_sql, (user_id, chat_id, case_title, case_symptoms))
                     conn.commit()

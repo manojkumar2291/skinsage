@@ -5,11 +5,13 @@ from app.services.appointment_service import AppointmentService
 from app.core.deps import get_current_user
 
 
+from app.schemas.payment import OrderResponse
+
 router = APIRouter(tags=["Appointments"])
 service = AppointmentService()
 
 
-@router.post("/appointments/book")
+@router.post("/appointments/book", response_model=OrderResponse)
 def book_appointment(
     data: AppointmentCreate,
     background_tasks: BackgroundTasks,

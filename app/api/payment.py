@@ -1,18 +1,10 @@
 from fastapi import APIRouter, Depends
-from app.schemas.payment import OrderCreate, OrderResponse, PaymentVerify, PaymentStatusResponse, RefundCreate
+from app.schemas.payment import OrderResponse, PaymentVerify, PaymentStatusResponse, RefundCreate
 from app.services.payment_service import PaymentService
 from app.core.deps import get_current_user, role_required
 
 router = APIRouter(tags=["Payments"])
 service = PaymentService()
-
-@router.post("/payments/create-order", response_model=OrderResponse)
-def create_order(
-    data: OrderCreate,
-    current_user: dict = Depends(get_current_user)
-):
-  
-    return service.create_order(user_id=current_user['id'], data=data)
 
 @router.post("/payments/verify", response_model=PaymentStatusResponse)
 def verify_payment(data: PaymentVerify):
