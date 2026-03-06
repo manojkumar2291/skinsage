@@ -109,3 +109,22 @@ The Team
 """
     return {"subject": subject, "body": body.strip()}
 
+
+def provider_welcome_template(user_name, reset_link):
+    """
+    Generates email content for a new provider welcome email.
+    """
+    subject = "Welcome to skinSage! Please set your password"
+    
+    body = f"""
+Hi {user_name},
+
+An account has been created for you. Please click the link below to set your password and log in:
+{reset_link}
+
+If you have any questions, please contact the administration.
+
+Thanks,
+The Team
+"""
+    return {"subject": subject, "body": body.strip()}

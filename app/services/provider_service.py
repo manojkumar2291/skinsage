@@ -5,6 +5,11 @@ from fastapi import HTTPException
 from app.database.mysql_conn import get_db_connection as get_connection
 from app.schemas.provider import ProviderCreate , ProviderUpdate
 from app.core.deps import get_current_user, Depends,role_required
+from app.services.email_service import send_email_sync
+from app.utils.email_templetes import password_reset_template, provider_welcome_template
+from app.core.config import settings
+import secrets
+from datetime import datetime, timedelta
 
 class ProviderService:
 
@@ -44,6 +49,36 @@ class ProviderService:
         conn.commit()
         
         new_id = cur.lastrowid
+        
+        # --- SEND WELCOME EMAIL WITH PASSWORD SETUP LINK ---
+        token = secrets.token_urlsafe(32) 
+        expires_at = datetime.now() + timedelta(days=7) # Link valid for 7 days
+        
+        # Save token
+        cur.execute("""
+            INSERT INTO password_resets (user_id, token, expires_at, used)
+            VALUES (%s, %s, %s, 0)
+        """, (user_id, token, expires_at))
+        conn.commit()
+        
+        reset_link = f"{settings.FRONTENDURL}/reset-password?token={token}"
+        
+        # Generate email content using the dedicated template
+        email_content = provider_welcome_template(data.name, reset_link)
+        
+        try:
+            # Note: Provider is created by Admin synchronously during this request. 
+            # In a real app we'd use BackgroundTasks, but since this is in the service layer
+            # and we might not have BackgroundTasks readily injected, we send synchronously 
+            # or could refactor to use it.
+            send_email_sync(
+                data.email, 
+                email_content['subject'], 
+                email_content['body']
+            )
+        except Exception as e:
+            print(f"Failed to send welcome email to {data.email}: {e}")
+        # --------------------------------------------------
         
         return {
             "id": new_id, 
