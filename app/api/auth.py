@@ -150,6 +150,7 @@ def verify_otp(data: OTPVerifyRequest):
                 "email": user["email"],
                 "full_name": user["full_name"],
                 "role": user["role"],
+                "profile_photo": f"{settings.BACKEND_URL}/{user['profile_photo']}" if user.get('profile_photo') else None,
                 "profile_complete": is_complete
             }
         }

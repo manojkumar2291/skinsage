@@ -5,6 +5,7 @@ from app.core.security import verify_token
 from fastapi import Depends, HTTPException, status
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from app.database.mysql_conn import get_db_connection
+from app.core.config import settings
 
 oauth2_scheme = HTTPBearer()
 
@@ -29,7 +30,9 @@ def get_current_user(credentials: HTTPAuthorizationCredentials = Depends(oauth2_
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="User not found")
         
     user.pop("password_hash", None)
-    # print(user)
+    
+    if user.get("profile_photo") and not user["profile_photo"].startswith("http"):
+        user["profile_photo"] = f"{settings.BACKEND_URL}/{user['profile_photo']}"
 
     return {**user, "profile_complete": is_complete}
 

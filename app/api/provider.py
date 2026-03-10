@@ -1,4 +1,5 @@
 from fastapi import APIRouter, Depends, HTTPException, Form, File, UploadFile, Query
+from app.core.config import settings
 from typing import List,Optional
 from decimal import Decimal
 from app.schemas.provider import ProviderCreate, ProviderResponse , ProviderUpdate, SlotGenerationRequest, SlotUpdateRequest, SlotResponse, AdminVerifyProvider
@@ -240,7 +241,7 @@ def upload_provider_docs(
             VALUES (%s, %s, %s)
         """, (provider['id'], type, file_path))
         conn.commit()
-        return {"msg": "Document uploaded"}
+        return {"msg": "Document uploaded", "file_url": f"{settings.BACKEND_URL}/{file_path}"}
     finally:
         cursor.close()
         conn.close()
@@ -277,6 +278,9 @@ def get_provider_documents(provider_id: int):
             WHERE provider_id=%s
         """, (provider_id,))
         documents = cursor.fetchall()
+        for doc in documents:
+            if doc.get('file_url'):
+                doc['file_url'] = f"{settings.BACKEND_URL}/{doc['file_url']}"
         return documents
     finally:
         cursor.close()

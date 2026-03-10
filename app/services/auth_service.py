@@ -80,6 +80,7 @@ class AuthService:
                 "email": user["email"],
                 "full_name": user["full_name"],
                 "role": user["role"],
+                "profile_photo": f"{settings.BACKEND_URL}/{user['profile_photo']}" if user.get('profile_photo') else None,
                 "profile_complete": is_complete
             }
         }
@@ -159,6 +160,7 @@ class AuthService:
                 "email": user["email"],
                 "full_name": user["full_name"],
                 "role": user["role"],
+                "profile_photo": f"{settings.BACKEND_URL}/{user['profile_photo']}" if user.get('profile_photo') else None,
                 "profile_complete": profile_complete
             }
         }
@@ -250,6 +252,7 @@ class AuthService:
                 "email": user["email"],
                 "full_name": user["full_name"],
                 "role": user["role"],
+                "profile_photo": f"{settings.BACKEND_URL}/{user['profile_photo']}" if user.get('profile_photo') else None,
                 "profile_complete": profile_complete
             }
         }
@@ -284,6 +287,7 @@ class AuthService:
                 "email": user["email"],
                 "full_name": user.get("full_name"), 
                 "role": user["role"],
+                "profile_photo": f"{settings.BACKEND_URL}/{user['profile_photo']}" if user.get('profile_photo') else None
                 # Refresh might not check profile complete, omit or None
             } 
         }

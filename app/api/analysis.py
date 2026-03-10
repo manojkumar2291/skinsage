@@ -290,7 +290,7 @@ async def analyze_endpoint(
             return chat_id
 
         new_id = await run_in_threadpool(db_insert_ai_chat)
-        
+        print(new_id)
     except Exception as e:
         print(f"Error inserting AI chat record: {e}")
         

@@ -67,6 +67,7 @@ class UserResponse(BaseModel):
     email: str
     full_name: Optional[str]
     role: Optional[str]
+    profile_photo: Optional[str] = None
     profile_complete: Optional[bool] = None
 
 class AuthResponse(BaseModel):

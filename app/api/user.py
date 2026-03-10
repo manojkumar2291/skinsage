@@ -1,6 +1,7 @@
 from app.schemas.user import UserUpdate, UserResponse
 from fastapi import APIRouter, Depends, HTTPException, File, UploadFile
 from app.core.deps import get_current_user
+from app.core.config import settings
 from app.database.mysql_conn import get_db_connection as get_db
 import os
 import shutil
@@ -64,7 +65,7 @@ def update_user_details(
         "dob": updated_user[4],
         "gender": updated_user[5],
         "language_pref": updated_user[6],
-        "profile_photo": updated_user[7]
+        "profile_photo": f"{settings.BACKEND_URL}/{updated_user[7]}" if updated_user[7] else None
     }
 
 @router.post("/user/{user_id}/profile-photo")
@@ -88,4 +89,4 @@ def upload_profile_photo(
     cursor.execute("UPDATE users SET profile_photo=%s WHERE id=%s", (file_path, user_id))
     db.commit()
     
-    return {"msg": "Profile photo uploaded successfully", "profile_photo": file_path}
+    return {"msg": "Profile photo uploaded successfully", "profile_photo": f"{settings.BACKEND_URL}/{file_path}"}

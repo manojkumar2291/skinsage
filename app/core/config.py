@@ -60,6 +60,7 @@ class Settings(BaseSettings):
     AGORA_APP_CERTIFICATE: str  # .env
 
     FRONTENDURL: str
+    BACKEND_URL: str = "http://localhost:8000"
     ENCRYPTION_KEY: str
     
     MICROSOFT_CLIENT_ID: str = "optional_default" # .env usually

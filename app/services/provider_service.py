@@ -103,6 +103,9 @@ class ProviderService:
              except:
                  pass
 
+        if provider.get("profile_photo") and not provider["profile_photo"].startswith("http"):
+             provider["profile_photo"] = f"{settings.BACKEND_URL}/{provider['profile_photo']}"
+
         return provider
     
     def list_providers(self, limit: int = 10, offset: int = 0, name: Optional[str] = None, 
@@ -162,7 +165,10 @@ class ProviderService:
                     p['specialty'] = json.loads(p['specialty'])
                 except:
                     pass
-                
+            
+            if p.get("profile_photo") and not p["profile_photo"].startswith("http"):
+                p["profile_photo"] = f"{settings.BACKEND_URL}/{p['profile_photo']}"
+
         return providers
     
     def update_provider_details(self,

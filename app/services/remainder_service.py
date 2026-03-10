@@ -62,10 +62,10 @@ def send_reminder_emails():
 
     for appt in cursor.fetchall():
         response = appointment_reminder_template(
-            patient_name=appt['full_name'], 
-            provider_name=appt['provider_name'],
-            slot=appt['preferred_slot'],
-            appointment_id=appt['id']
+            user_name=appt['full_name'], 
+            doctor_name=appt['provider_name'],
+            appointment_time=appt['preferred_slot'],
+            booking_id=appt['id']
         )
 
         send_email(to_email=appt["email"], subject=response['subject'], body=response['body'])
