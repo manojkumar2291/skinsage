@@ -267,7 +267,7 @@ def verify_provider(
     finally:
         cursor.close()
         conn.close()
-@router.get('/documets/{provider_id}')
+@router.get('/documents/{provider_id}')
 def get_provider_documents(provider_id: int):
     conn = get_db()
     cursor = conn.cursor(dictionary=True)
