@@ -90,7 +90,8 @@ class AuthService:
             google_user = id_token.verify_oauth2_token(
                 token,
                 requests.Request(),
-                settings.GOOGLE_CLIENT_ID
+                settings.GOOGLE_CLIENT_ID,
+                clock_skew_in_seconds=10
             )
         except Exception as e:
             print(f"Google Auth Error: {e}")

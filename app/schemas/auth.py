@@ -46,7 +46,7 @@ class MicrosoftLoginSchema(BaseModel):
     token: str
 
 class RefreshSchema(BaseModel):
-    refresh_token: str
+    refresh_token: Optional[str] = None
 
 class CompleteProfileSchema(BaseModel):
   
@@ -72,7 +72,7 @@ class UserResponse(BaseModel):
 
 class AuthResponse(BaseModel):
     access_token: str
-    refresh_token: str
+    refresh_token: Optional[str] = None
     token_type: str = "bearer"
     user: UserResponse
     profile_complete: Optional[bool] = True

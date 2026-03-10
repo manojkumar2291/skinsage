@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends,HTTPException, BackgroundTasks
+from fastapi import APIRouter, Depends,HTTPException, BackgroundTasks, Response, Request
 from app.schemas.auth import (
     RegisterSchema, 
     LoginSchema, 
@@ -34,21 +34,66 @@ def register(data: RegisterSchema):
 
 @router.post("/login", response_model=AuthResponse)
 
-def login(data: LoginSchema):
-    return service.login(data)
+def login(data: LoginSchema, response: Response):
+    result = service.login(data)
+    refresh_token = result.pop("refresh_token")
+    response.set_cookie(
+        key="refresh_token",
+        value=refresh_token,
+        httponly=True,
+        samesite="lax",
+        secure=False,  # Set to True in production
+        max_age=30 * 24 * 60 * 60  # 30 days
+    )
+    return result
 
 @router.post("/google-login", response_model=AuthResponse)
 
-def google_login(data: GoogleLoginSchema):
-    return service.google_login(data.token)
+def google_login(data: GoogleLoginSchema, response: Response):
+    result = service.google_login(data.token)
+    refresh_token = result.pop("refresh_token")
+    response.set_cookie(
+        key="refresh_token",
+        value=refresh_token,
+        httponly=True,
+        samesite="lax",
+        secure=False,
+        max_age=30 * 24 * 60 * 60
+    )
+    return result
 
 @router.post("/microsoft-login", response_model=AuthResponse)
-def microsoft_login(data: MicrosoftLoginSchema):
-    return service.microsoft_login(data.token)
+def microsoft_login(data: MicrosoftLoginSchema, response: Response):
+    result = service.microsoft_login(data.token)
+    refresh_token = result.pop("refresh_token")
+    response.set_cookie(
+        key="refresh_token",
+        value=refresh_token,
+        httponly=True,
+        samesite="lax",
+        secure=False,
+        max_age=30 * 24 * 60 * 60
+    )
+    return result
 
 @router.post("/refresh", response_model=AuthResponse)
-def refresh_token(payload: RefreshSchema):
-    return service.refresh_tokens(payload.refresh_token)
+def refresh_token(request: Request, response: Response, payload: RefreshSchema = None):
+    # Try getting token from payload first (backward compatibility), then from cookie
+    token = (payload.refresh_token if payload else None) or request.cookies.get("refresh_token")
+    if not token:
+        raise HTTPException(401, "Refresh token missing")
+    
+    result = service.refresh_tokens(token)
+    new_refresh = result.pop("refresh_token")
+    response.set_cookie(
+        key="refresh_token",
+        value=new_refresh,
+        httponly=True,
+        samesite="lax",
+        secure=False,
+        max_age=30 * 24 * 60 * 60
+    )
+    return result
 
 @router.get("/me")
 def me(current_user=Depends(get_current_user)):
@@ -97,7 +142,7 @@ def generate_otp(data: OTPGenerateRequest, background_tasks: BackgroundTasks):
         conn.close()
 
 @router.post("/otp/verify")
-def verify_otp(data: OTPVerifyRequest):
+def verify_otp(data: OTPVerifyRequest, response: Response):
     conn = get_db_connection()
     cursor = conn.cursor(dictionary=True)
     try:
@@ -141,9 +186,17 @@ def verify_otp(data: OTPVerifyRequest):
         cursor.execute("UPDATE users SET refresh_token=%s WHERE id=%s", (refresh, user["id"]))
         conn.commit()
 
+        response.set_cookie(
+            key="refresh_token",
+            value=refresh,
+            httponly=True,
+            samesite="lax",
+            secure=False,
+            max_age=30 * 24 * 60 * 60
+        )
+
         return {
             "access_token": access,
-            "refresh_token": refresh,
             "profile_complete": is_complete, 
             "user": {
                 "id": user["id"],
