@@ -46,6 +46,7 @@ from app.core.config import settings
 
 # shoping cart routes
 from app.api.shop import router as shop_router
+from app.api.dashboard import router as dashboard_router
 
 
 
@@ -134,6 +135,7 @@ app.include_router(visits_router, prefix="/api/visits", tags=["Visits"])
 app.include_router(content_router, prefix="/api/content", tags=["Content Management"] )
 
 app.include_router(shop_router, prefix="/api", tags=["E-commerce"])
+app.include_router(dashboard_router, prefix="/api/dashboard", tags=["Dashboard"])
 
 
 scheduler = BackgroundScheduler()
