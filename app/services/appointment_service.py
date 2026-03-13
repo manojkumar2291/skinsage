@@ -126,17 +126,28 @@ class AppointmentService:
     def list_appointments(self, user_id: int, role: str):
         conn = get_connection()
         cur = conn.cursor(dictionary=True)
-        print(role)
+        print(f"Listing appointments for user_id={user_id}, role={role}")
 
-        if role in ['provider', 'doctor']:
-            cur.execute("SELECT * FROM appointments WHERE provider_id=%s ORDER BY preferred_slot ASC", (user_id,))
-        else:
-            cur.execute("SELECT * FROM appointments WHERE patient_id=%s ORDER BY created_at DESC", (user_id,))
+        try:
+            if role in ['provider', 'doctor']:
+                # For providers, we first need to find their provider_id
+                cur.execute("SELECT id FROM providers WHERE user_id=%s", (user_id,))
+                provider = cur.fetchone()
+                if not provider:
+                    return []
+                cur.execute("SELECT * FROM appointments WHERE provider_id=%s ORDER BY preferred_slot ASC", (provider['id'],))
+            elif role == 'admin':
+                # Admins see everything
+                cur.execute("SELECT * FROM appointments ORDER BY created_at DESC")
+            else:
+                # Patients see their own
+                cur.execute("SELECT * FROM appointments WHERE patient_id=%s ORDER BY created_at DESC", (user_id,))
 
-        result = cur.fetchall()
-        cur.close()
-        conn.close()
-        return result
+            result = cur.fetchall()
+            return result
+        finally:
+            cur.close()
+            conn.close()
 
 
     def get_appointment(self, appointment_id: int, user_id: int, role: str):

@@ -78,12 +78,14 @@ def generate_slots(
             fmt_start_time = current_dt.strftime('%Y-%m-%d %H:%M:%S')
             fmt_end_time = slot_end.strftime('%Y-%m-%d %H:%M:%S')
 
-            # Check overlap
+            # Check any overlap (not just exact start match)
+            # A slot overlaps if: NewStart < ExistingEnd AND NewEnd > ExistingStart
             cursor.execute("""
                 SELECT 1 FROM appointment_slots 
                 WHERE provider_id = %s 
-                AND start_time = %s
-            """, (provider_id, fmt_start_time))
+                AND start_time < %s 
+                AND end_time > %s
+            """, (provider_id, fmt_end_time, fmt_start_time))
 
             if not cursor.fetchone():
                 cursor.execute("""
@@ -169,7 +171,8 @@ def get_provider_slots(
     provider_id: int,
     start_date: Optional[date] = None,
     end_date: Optional[date] = None,
-    
+    is_available: Optional[bool] = Query(True),
+    is_booked: Optional[bool] = Query(False)
 ):
     db = get_db()
     cursor = db.cursor()
@@ -178,12 +181,12 @@ def get_provider_slots(
         SELECT id, provider_id, start_time, end_time, is_available, is_booked 
         FROM appointment_slots 
         WHERE provider_id = %s 
-        AND is_available = 1 
-        And is_onhold = 0
-        AND is_booked = 0
+        AND is_available = %s
+        AND is_booked = %s
+        AND is_onhold = 0
         AND start_time > NOW() 
     """
-    params = [provider_id]
+    params = [provider_id, int(is_available), int(is_booked)]
 
     if start_date:
         query += " AND start_time >= %s"
