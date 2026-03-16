@@ -58,15 +58,38 @@ class CaseService:
             "created_at": datetime.now()
         }
 
-    def list_user_cases(self, user_id: int):
+    def list_user_cases(
+        self, 
+        current_user: dict, 
+        limit: int = 10, 
+        offset: int = 0, 
+        search_user_id: int = None, 
+        ai_chat_id: int = None
+    ):
         conn = get_connection()
         cur = conn.cursor(dictionary=True)
         
-      
-        cur.execute("SELECT * FROM cases WHERE user_id=%s ORDER BY created_at DESC", (user_id,))
-        cases = cur.fetchall()
+        query = "SELECT * FROM cases WHERE 1=1"
+        params = []
 
-       
+        # Role-based restriction
+        if current_user.get('role') != 'admin':
+            query += " AND user_id = %s"
+            params.append(current_user['id'])
+        elif search_user_id:
+            query += " AND user_id = %s"
+            params.append(search_user_id)
+
+        # Filters
+        if ai_chat_id:
+            query += " AND ai_chat_id = %s"
+            params.append(ai_chat_id)
+
+        query += " ORDER BY created_at DESC LIMIT %s OFFSET %s"
+        params.extend([limit, offset])
+
+        cur.execute(query, tuple(params))
+        cases = cur.fetchall()
         return cases
 
     def get_case_details(self, case_id: int, user_id: int, user_role: str):

@@ -1,5 +1,5 @@
 from fastapi import APIRouter, Depends
-from typing import List
+from typing import List, Optional
 from app.schemas.case import CaseCreate, CaseResponse, CaseStatusUpdate
 from app.services.case_service import CaseService
 from app.core.deps import get_current_user
@@ -20,12 +20,23 @@ def create_case(
     return service.create_case(user_id=current_user['id'], data=data)
 
 # 2. List cases for the logged-in user
+
 @router.get("/cases", response_model=List[CaseResponse])
 def list_cases(
+    limit: int = 10,
+    offset: int = 0,
+    search_user_id: Optional[int] = None,
+    ai_chat_id: Optional[int] = None,
     current_user: dict = Depends(get_current_user),
     service: CaseService = Depends(get_case_service)
 ):
-    return service.list_user_cases(user_id=current_user['id'])
+    return service.list_user_cases(
+        current_user=current_user,
+        limit=limit,
+        offset=offset,
+        search_user_id=search_user_id,
+        ai_chat_id=ai_chat_id
+    )
 
 # 3. Get Case Details
 @router.get("/cases/{case_id}", response_model=CaseResponse)
