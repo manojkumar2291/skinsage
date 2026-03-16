@@ -164,7 +164,7 @@ class AppointmentService:
             is_patient = appt['patient_id'] == user_id
             is_provider = False
             
-            if role == 'doctor':
+            if role == 'doctor' or role == 'provider':
                 cur.execute("SELECT id FROM providers WHERE user_id=%s", (user_id,))
                 provider = cur.fetchone()
                 if provider and provider['id'] == appt['provider_id']:
