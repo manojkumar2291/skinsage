@@ -9,6 +9,8 @@ from datetime import datetime
 from fastapi import APIRouter, File, UploadFile, Form, HTTPException, Depends, Request, Response 
 from fastapi.responses import HTMLResponse, JSONResponse
 from fastapi.concurrency import run_in_threadpool
+from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
+from typing import List, Tuple, Optional
 from app.core.deps import get_current_user
 import requests
 from app.schemas.analysis import AIChatResponse
@@ -22,6 +24,7 @@ from collections import namedtuple
 Credentials = namedtuple('Credentials', ['credentials'])
 
 router = APIRouter()
+security = HTTPBearer(auto_error=False)
 
 def parse_summary_to_array(text):
     data_array = []
@@ -74,82 +77,76 @@ def extract_category_and_path(messages_list: list) -> Tuple[str, str]:
 
 @router.post("/chat")
 async def analyze_endpoint(
-    request: Request,   # <--- Added to access cookies/headers
-    response: Response, # <--- Added to set cookies
+    request: Request,
+    response: Response,
     messages: str = Form(...),
     image_files: List[UploadFile] = File(...),
+    token_creds: Optional[HTTPAuthorizationCredentials] = Depends(security)
 ):
     user_id = None
     guest_id = None
-
+    
+    
+    # --- 1. AUTHENTICATION & GUEST LOGIC ---
     try:
-        auth_header = request.headers.get("Authorization")
-        print("Authorization header:", auth_header)
+        token = None
+        # Priority 1: Swagger/Header via token_creds
+        if token_creds:
+            token = token_creds.credentials
+        
+        # Priority 2: Manual extraction (fallback)
+        if not token:
+            auth_header = request.headers.get("Authorization")
+            if auth_header and "Bearer " in auth_header:
+                token = auth_header.replace("Bearer ", "")
 
-        if auth_header:
-            token = auth_header.replace("Bearer ", "")
-            token_obj = Credentials(credentials=token)
-            curr_user = await run_in_threadpool(get_current_user, token_obj) 
+        if token:
+            
+            curr_user = await run_in_threadpool(get_current_user, Credentials(credentials=token)) 
             if curr_user:
-                user_id = curr_user['id']
+                user_id = curr_user.get('id')
     except Exception as e:
-        print("Error getting current user:", e)
-        pass 
+        print(f"Auth derivation failed: {e}")
 
     if not user_id:
         guest_id = request.cookies.get("guest_id") 
         if not guest_id:
             guest_id = str(uuid.uuid4()) 
-           
-            response.set_cookie(key="guest_id", value=guest_id, httponly=True, max_age=2592000)
-    
+            # Set cookie for 30 days
+            response.set_cookie(
+                key="guest_id", 
+                value=guest_id, 
+                httponly=True, 
+                max_age=2592000,
+                samesite="lax"
+            )
 
+    # --- 2. INPUT VALIDATION & PARSING ---
     try:
         messages_json = json.loads(messages)
     except json.JSONDecodeError:
         raise HTTPException(status_code=400, detail="Invalid JSON format in 'messages' field")
 
     if not (1 <= len(image_files) <= 3):
-        raise HTTPException(status_code=400, detail="You must upload between 1 and 3 images.")
+        raise HTTPException(status_code=400, detail="Please upload 1 to 3 images.")
 
     subfolder_path, category_type = extract_category_and_path(messages_json)
     
+    # --- 3. IMAGE NORMALIZATION & AI VALIDATION ---
     valid_images_payload = [] 
-
     for i, file in enumerate(image_files):
-        try:
-            image_bytes = await file.read()
-        except Exception as e:
-            print(f"ERROR: Failed reading file {file.filename}: {e}")
-            raise HTTPException(status_code=400, detail=f"Failed reading file {file.filename}")
+        image_bytes = await file.read()
+        if not image_bytes: continue
             
-        # Very important: When form-data gets parsed, sometimes empty file inputs 
-        # get sent by clients.
-        if not image_bytes or len(image_bytes) == 0:
-            print(f"WARNING: File {file.filename} is empty (0 bytes). Skipping.")
-            continue
-            
-        print(f"DEBUG: Read {len(image_bytes)} bytes from {file.filename}")
-
-        try:
-            processed_image = image_proc.normalize_image_bytes(image_bytes)
-        except Exception as e:
-            print(f"CRITICAL ERROR: Failed to normalize image {file.filename}: {e}")
-            raise HTTPException(
-                status_code=400, 
-                detail=f"Uploaded file '{file.filename}' is not a valid or readable image."
-            )
-
+        processed_image = image_proc.normalize_image_bytes(image_bytes)
+        
+        # Verify the image is actually a medical/skin photo
         is_valid, validation_msg = llm_proc.validate_image_is_dermatological(
-            processed_image, 
-            expected_category=category_type
+            processed_image, expected_category=category_type
         )
         
         if not is_valid:
-            raise HTTPException(
-                status_code=400, 
-                detail=f"Image '{file.filename}' rejected: {validation_msg}"
-            )
+            raise HTTPException(status_code=400, detail=f"Image {file.filename} rejected: {validation_msg}")
         
         valid_images_payload.append({
             "bytes": image_bytes,
@@ -157,151 +154,85 @@ async def analyze_endpoint(
             "processed": processed_image
         })
 
-    if not valid_images_payload:
-        raise HTTPException(status_code=400, detail="No valid images were provided in the upload.")
-
-    print(f"📂 Validation passed. Saving {len(valid_images_payload)} images to: uploads/{subfolder_path}") 
-    
+    # --- 4. IMAGE STORAGE & LLM CONTENT PREP ---
     vision_model_content = []
     image_metadata = []
 
     for item in valid_images_payload:
         unique_filename, server_url_path = await image_proc.save_image_to_disk(
-            item["bytes"], 
-            item["filename"],
-            subfolder=subfolder_path
+            item["bytes"], item["filename"], subfolder=subfolder_path
         )
+        image_metadata.append({"url": server_url_path})
         
-        image_metadata.append({
-            "file_name": unique_filename,
-            "server_url_path": server_url_path
-        })
-        
-        image_data_uri = image_proc.encode_image_to_base64_datauri(
-            item["processed"], 
-            filename_hint=item["filename"]
-        )
+        image_data_uri = image_proc.encode_image_to_base64_datauri(item["processed"])
         vision_model_content.append({"type": "image_url", "image_url": {"url": image_data_uri}})
 
-    def get_msg_role(m):
-        if isinstance(m, str):
-            try: m = json.loads(m)
-            except: return ""
-        return m.get('role', '')
-
-    def get_msg_content(m):
-        if isinstance(m, str):
-            try: m = json.loads(m)
-            except: return str(m)
-        return m.get('content', '')
-
-    user_prompt_text = (
-        "=== USER'S COMPLETE SYMPTOM HISTORY ===\n"
-        "The following is the structured conversation history containing the user's condition selection and diagnostic answers:\n\n"
-        + "\n".join([f"- {get_msg_role(msg).upper()}: {get_msg_content(msg)}" for msg in messages_json if get_msg_role(msg) == 'user']) +
-        "\n\n=== END OF HISTORY ===\n\n"
-        "Now, analyze the images based on the provided history and the structured system prompt."
-    )
+    # --- 5. AI ANALYSIS CALL ---
+    user_history = "\n".join([
+        f"- {m.get('role','').upper()}: {m.get('content','')}" 
+        for m in messages_json if m.get('role') == 'user'
+    ])
     
-    vision_model_content.insert(0, {"type": "text", "text": user_prompt_text})
+    vision_model_content.insert(0, {"type": "text", "text": f"User History:\n{user_history}\n\nAnalyze these images."})
 
     analysis_messages = [
         {"role": "system", "content": settings.ANALYSIS_SYSTEM_PROMPT},
         {"role": "user", "content": vision_model_content}
     ]
 
-    try:
-        response_llm = await run_in_threadpool(llm_proc.call_openrouter_model, analysis_messages) # Renamed var to avoid conflict
-    except requests.RequestException as e:
-        raise HTTPException(status_code=400, detail=f"OpenRouter API request failed: {str(e)}")
+    llm_resp = await run_in_threadpool(llm_proc.call_openrouter_model, analysis_messages)
+    raw_analysis = llm_resp.json().get('choices', [{}])[0].get('message', {}).get('content', "")
 
-    if response_llm.status_code != 200:
-        error_detail = response_llm.text[:500] 
-        raise HTTPException(status_code=400, detail=f"Model Provider API error: {response_llm.status_code} - {error_detail}")
+    # Parse recommendation flag
+    recommendation_needed = "Recommendation_Required: Yes" in raw_analysis
+    clean_analysis = re.sub(r"Recommendation_Required:\s*(Yes|No)", "", raw_analysis, flags=re.I).strip()
 
-    data = response_llm.json()
-    raw_analysis = data.get('choices', [{}])[0].get('message', {}).get('content', "I couldn't complete the analysis.")
-    
-    recommendation_needed = False
-    analysis_text = raw_analysis
-
-    match = re.search(r"Recommendation_Required:\s*(Yes|No)", raw_analysis, re.IGNORECASE)
-    if match:
-        recommendation_status = match.group(1).lower()
-        analysis_text = raw_analysis.replace(match.group(0), "").strip()
-        if recommendation_status == 'yes':
-            recommendation_needed = True
-
-    new_id = None
-    try:
-        photo_urls = ",".join([item['server_url_path'] for item in image_metadata])
-        summary_text = "Analysis completed by AI"
-        
-        red_flag = 1 if recommendation_needed else 0
-
-        def db_insert_ai_chat():
-            conn = get_connection()
-            cur = conn.cursor(dictionary=True)
+    # --- 6. DATABASE PERSISTENCE (Safe Threading) ---
+    def db_operations():
+        conn = get_connection()
+        cur = conn.cursor(dictionary=True)
+        try:
+            photo_urls = ",".join([m['url'] for m in image_metadata])
             
+            # 6a. Insert AI Chat Record
             cur.execute(
-                """
-                INSERT INTO ai_chats (
-                    user_id, guest_id, input_text, ai_response, summary, 
-                    red_flag, photo_url, created_at
-                ) VALUES (%s, %s, %s, %s, %s, %s, %s, NOW())
-                """,
-                (
-                    user_id,    # Can be None now
-                    guest_id,   # Can be None now
-                    "\n".join([get_msg_content(msg) for msg in messages_json if get_msg_role(msg) == 'user']),
-                    analysis_text,
-                    summary_text,
-                    red_flag,
-                    photo_urls
-                )
+                """INSERT INTO ai_chats (user_id, guest_id, input_text, ai_response, summary, red_flag, photo_url, created_at) 
+                   VALUES (%s, %s, %s, %s, %s, %s, %s, NOW())""",
+                (user_id, guest_id, user_history[:1000], clean_analysis, "AI Skin Analysis", int(recommendation_needed), photo_urls)
             )
-            # ------------------------------------------------
-            
             chat_id = cur.lastrowid
-            conn.commit()
-            chat_id = cur.lastrowid
-            
-            # --- AUTO-CREATE CASE ---
-            if user_id:
-                try:
-                    case_sql = """
-                        INSERT INTO cases 
-                        (user_id, ai_chat_id, title, symptoms, status, created_at)
-                        VALUES (%s, %s, %s, %s, 'open', NOW())
-                    """
-                    # Use a default title or derive from summary
-                    case_title = f"AI Analysis - {datetime.now().strftime('%Y-%m-%d')}"
-                    case_symptoms = "\n".join([get_msg_content(msg) for msg in messages_json if get_msg_role(msg) == 'user'])
-                    
-                    cur.execute(case_sql, (user_id, chat_id, case_title, case_symptoms))
-                    conn.commit()
-                    print(f"DEBUG: Auto-created Case for User {user_id}, Chat {chat_id}")
-                except Exception as ex:
-                    print(f"ERROR: Failed to auto-create case: {ex}")
-            # ------------------------
+            case_id = None
 
+            # 6b. Auto-create Case (ONLY for logged-in users)
+            if user_id:
+                case_title = f"AI Analysis - {datetime.now().strftime('%Y-%m-%d')}"
+                cur.execute(
+                    """INSERT INTO cases (user_id, ai_chat_id, title, symptoms, status, created_at) 
+                       VALUES (%s, %s, %s, %s, 'open', NOW())""",
+                    (user_id, chat_id, case_title, user_history[:2000])
+                )
+                case_id = cur.lastrowid
+            
+            conn.commit()
+            return chat_id, case_id
+        except Exception as e:
+            conn.rollback()
+            print(f"Database insertion failed: {e}")
+            return None, None
+        finally:
             cur.close()
             conn.close()
-            return chat_id
 
-        new_id = await run_in_threadpool(db_insert_ai_chat)
-        print(new_id)
-    except Exception as e:
-        print(f"Error inserting AI chat record: {e}")
-        
+    new_chat_id, new_case_id = await run_in_threadpool(db_operations)
+
+    # --- 7. FINAL RESPONSE ---
     return JSONResponse({
-        "reply": analysis_text, 
+        "reply": clean_analysis, 
         "recommendation_needed": recommendation_needed,
-        "images_processed": len(image_files),
-        "chat_id": new_id,
-        "guest_mode": (user_id is None) # <--- Added flag to tell frontend if user is guest
+        "chat_id": new_chat_id,
+        "case_id": new_case_id, # Will be None for guests
+        "guest_mode": (user_id is None)
     })
-
 @router.get("/{chat_id}", response_model=AIChatResponse)
 def retrieve_ai_chat(
     chat_id: int, 
