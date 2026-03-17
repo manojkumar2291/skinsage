@@ -224,7 +224,6 @@ class ProviderService:
         from datetime import datetime, timedelta, time
         from typing import List
         from fastapi import HTTPException
-        from app.core.database import get_connection
 
         conn = get_connection()
         cursor = conn.cursor(dictionary=True)
