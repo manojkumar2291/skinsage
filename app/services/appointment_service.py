@@ -1,4 +1,5 @@
 import asyncio
+import json
 from fastapi import HTTPException, BackgroundTasks
 from datetime import datetime, timedelta
 from typing import Optional
@@ -63,18 +64,38 @@ class AppointmentService:
             # --- BEGIN TRANSACTION LOGIC ---
             print(f"Attempting to secure slot for provider_id={data.provider_id} at {formatted_slot}")
             
-            # 3. Update the slot FIRST to ensure it's available and lock it
+            # 3. Check slot status first to provide specific error messages
+            cur.execute("""
+                SELECT is_available, is_onhold, is_booked 
+                FROM appointment_slots 
+                WHERE provider_id=%s AND start_time=%s
+            """, (data.provider_id, formatted_slot))
+            slot = cur.fetchone()
+
+            if not slot:
+                conn.rollback()
+                raise HTTPException(status_code=404, detail="This slot does not exist.")
+            
+            if slot['is_booked']:
+                conn.rollback()
+                raise HTTPException(status_code=409, detail="This slot is already booked.")
+            
+            if slot['is_onhold']:
+                conn.rollback()
+                raise HTTPException(status_code=409, detail="This slot is temporarily locked for another payment. Please try again in a few minutes.")
+
+            # 4. Update the slot FIRST to ensure it's available and lock it
             update_slot_sql = """
                 UPDATE appointment_slots 
                 SET is_onhold=1, is_available=0 
-                WHERE provider_id=%s AND start_time=%s AND is_available=1
+                WHERE provider_id=%s AND start_time=%s AND is_available=1 AND is_onhold=0
             """
             cur.execute(update_slot_sql, (data.provider_id, formatted_slot))
             
             # CRITICAL CHECK: Did we actually secure the slot?
             if cur.rowcount == 0:
                 conn.rollback()
-                raise HTTPException(status_code=409, detail="This slot is no longer available.")
+                raise HTTPException(status_code=409, detail="Failed to secure slot. It might have been recently locked or booked.")
 
             # 4. If slot is secured, insert the pending appointment
             insert_appt_sql = """
@@ -129,21 +150,39 @@ class AppointmentService:
         print(f"Listing appointments for user_id={user_id}, role={role}")
 
         try:
+            query = """
+                SELECT a.*, p.name as provider_name, p.specialty as provider_specialty
+                FROM appointments a
+                LEFT JOIN providers p ON a.provider_id = p.id
+                WHERE 1=1
+            """
+            params = []
+
             if role in ['provider', 'doctor']:
                 # For providers, we first need to find their provider_id
                 cur.execute("SELECT id FROM providers WHERE user_id=%s", (user_id,))
                 provider = cur.fetchone()
                 if not provider:
                     return []
-                cur.execute("SELECT * FROM appointments WHERE provider_id=%s ORDER BY preferred_slot ASC", (provider['id'],))
+                query += " AND a.provider_id=%s ORDER BY a.preferred_slot ASC"
+                params.append(provider['id'])
             elif role == 'admin':
                 # Admins see everything
-                cur.execute("SELECT * FROM appointments ORDER BY created_at DESC")
+                query += " ORDER BY a.created_at DESC"
             else:
                 # Patients see their own
-                cur.execute("SELECT * FROM appointments WHERE patient_id=%s ORDER BY created_at DESC", (user_id,))
+                query += " AND a.patient_id=%s ORDER BY a.created_at DESC"
+                params.append(user_id)
 
+            cur.execute(query, tuple(params))
             result = cur.fetchall()
+
+            for appt in result:
+                if isinstance(appt.get('provider_specialty'), str):
+                    try:
+                        appt['provider_specialty'] = json.loads(appt['provider_specialty'])
+                    except:
+                        pass
             return result
         finally:
             cur.close()

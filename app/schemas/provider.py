@@ -65,6 +65,7 @@ class SlotGenerationRequest(BaseModel):
     start_time: time
     end_time: time
     duration_minutes: int = 30
+    excluded_intervals: Optional[List[List[time]]] = None  # List of [start, end] time pairs
 
 class SlotUpdateRequest(BaseModel):
     slot_ids: List[int]

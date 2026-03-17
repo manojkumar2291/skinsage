@@ -29,6 +29,8 @@ class AppointmentResponse(BaseModel):
     case_id: Optional[int]= None
     patient_id: int
     provider_id: int
+    provider_name: Optional[str] = None
+    provider_specialty: Optional[str] = None
     preferred_slot: datetime
     confirmed_slot: Optional[datetime]
     status: AppointmentStatus

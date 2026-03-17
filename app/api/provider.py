@@ -51,67 +51,7 @@ def generate_slots(
     config: SlotGenerationRequest,
     current_user: dict = Depends(role_required("admin", "provider"))
 ):
-    db = get_db()
-    cursor = db.cursor()
-    new_slots = []
-
-    # Helper to strip seconds/microseconds
-    def normalize(dt: datetime):
-        return dt.replace(second=0, microsecond=0)
-
-    current_date = config.start_date
-
-    while current_date <= config.end_date:
-        # Combine Date + Time
-        start_dt_obj = datetime.combine(current_date, config.start_time)
-        
-        # 1. Normalize (Remove seconds)
-        current_dt = normalize(start_dt_obj)
-        
-        end_dt_limit = normalize(datetime.combine(current_date, config.end_time))
-
-        while current_dt + timedelta(minutes=config.duration_minutes) <= end_dt_limit:
-            slot_end = normalize(current_dt + timedelta(minutes=config.duration_minutes))
-
-            # 2. Format as String for SQL (Crucial for matching)
-            # This ensures MySQL sees "2025-12-10 09:00:00" exactly
-            fmt_start_time = current_dt.strftime('%Y-%m-%d %H:%M:%S')
-            fmt_end_time = slot_end.strftime('%Y-%m-%d %H:%M:%S')
-
-            # Check any overlap (not just exact start match)
-            # A slot overlaps if: NewStart < ExistingEnd AND NewEnd > ExistingStart
-            cursor.execute("""
-                SELECT 1 FROM appointment_slots 
-                WHERE provider_id = %s 
-                AND start_time < %s 
-                AND end_time > %s
-            """, (provider_id, fmt_end_time, fmt_start_time))
-
-            if not cursor.fetchone():
-                cursor.execute("""
-                    INSERT INTO appointment_slots 
-                    (provider_id, start_time, end_time, is_available, is_booked)
-                    VALUES (%s, %s, %s, %s, %s)
-                """, (provider_id, fmt_start_time, fmt_end_time, True, False))
-
-                new_id = cursor.lastrowid
-
-                new_slots.append({
-                    "id": new_id,
-                    "provider_id": provider_id,
-                    "start_time": fmt_start_time,
-                    "end_time": fmt_end_time,
-                    "is_available": True,
-                    "is_booked": False
-                })
-
-            current_dt = slot_end
-
-        current_date += timedelta(days=1)
-
-    db.commit()
-    cursor.close()
-    return new_slots
+    return service.generate_bulk_slots(provider_id, config)
 
 
 @router.put("/slot/{provider_id}")

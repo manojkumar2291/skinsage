@@ -218,3 +218,83 @@ class ProviderService:
         db.commit()
 
         return {"msg": "Updated successfully", "status": "success"}
+
+    def generate_bulk_slots(self, provider_id: int, config: 'SlotGenerationRequest'):
+        from app.schemas.provider import SlotGenerationRequest
+        from datetime import datetime, timedelta, time
+        from typing import List
+        from fastapi import HTTPException
+        from app.core.database import get_connection
+
+        conn = get_connection()
+        cursor = conn.cursor(dictionary=True)
+        new_slots = []
+
+        def normalize(dt: datetime):
+            return dt.replace(second=0, microsecond=0)
+
+        def is_excluded(current_dt: datetime, duration_minutes: int, excluded_intervals: List[List[time]]):
+            if not excluded_intervals:
+                return False
+            
+            slot_start_time = current_dt.time()
+            slot_end_time = (current_dt + timedelta(minutes=duration_minutes)).time()
+            
+            for interval in excluded_intervals:
+                ex_start, ex_end = interval
+                # Overlap check for times within a day
+                if slot_start_time < ex_end and slot_end_time > ex_start:
+                    return True
+            return False
+
+        try:
+            current_date = config.start_date
+            while current_date <= config.end_date:
+                start_dt_obj = datetime.combine(current_date, config.start_time)
+                current_dt = normalize(start_dt_obj)
+                end_dt_limit = normalize(datetime.combine(current_date, config.end_time))
+
+                while current_dt + timedelta(minutes=config.duration_minutes) <= end_dt_limit:
+                    if is_excluded(current_dt, config.duration_minutes, config.excluded_intervals):
+                        current_dt += timedelta(minutes=config.duration_minutes)
+                        continue
+
+                    slot_end = normalize(current_dt + timedelta(minutes=config.duration_minutes))
+                    fmt_start_time = current_dt.strftime('%Y-%m-%d %H:%M:%S')
+                    fmt_end_time = slot_end.strftime('%Y-%m-%d %H:%M:%S')
+
+                    # Check for overlaps or duplicates
+                    cursor.execute("""
+                        SELECT 1 FROM appointment_slots 
+                        WHERE provider_id = %s 
+                        AND start_time < %s 
+                        AND end_time > %s
+                    """, (provider_id, fmt_end_time, fmt_start_time))
+
+                    if not cursor.fetchone():
+                        cursor.execute("""
+                            INSERT INTO appointment_slots 
+                            (provider_id, start_time, end_time, is_available, is_booked)
+                            VALUES (%s, %s, %s, %s, %s)
+                        """, (provider_id, fmt_start_time, fmt_end_time, True, False))
+                        
+                        new_slots.append({
+                            "id": cursor.lastrowid,
+                            "provider_id": provider_id,
+                            "start_time": fmt_start_time,
+                            "end_time": fmt_end_time,
+                            "is_available": True,
+                            "is_booked": False
+                        })
+
+                    current_dt = slot_end
+                current_date += timedelta(days=1)
+            
+            conn.commit()
+            return new_slots
+        except Exception as e:
+            conn.rollback()
+            raise HTTPException(status_code=500, detail=f"Failed to generate slots: {str(e)}")
+        finally:
+            cursor.close()
+            conn.close()
