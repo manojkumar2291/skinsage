@@ -1,5 +1,5 @@
 from pydantic import BaseModel
-from typing import Optional
+from typing import Optional, List, Union
 from enum import Enum
 from datetime import datetime, date, time
 
@@ -30,7 +30,8 @@ class AppointmentResponse(BaseModel):
     patient_id: int
     provider_id: int
     provider_name: Optional[str] = None
-    provider_specialty: Optional[str] = None
+    provider_specialty: Optional[Union[List[str], str]] = None
+    experience: Optional[int] = None
     preferred_slot: datetime
     confirmed_slot: Optional[datetime]
     status: AppointmentStatus

@@ -151,7 +151,7 @@ class AppointmentService:
 
         try:
             query = """
-                SELECT a.*, p.name as provider_name, p.specialty as provider_specialty
+                SELECT a.*, p.name as provider_name, p.specialty as provider_specialty, p.experience_years as experience
                 FROM appointments a
                 LEFT JOIN providers p ON a.provider_id = p.id
                 WHERE 1=1
@@ -194,11 +194,24 @@ class AppointmentService:
         cur = conn.cursor(dictionary=True)
 
         try:
-            cur.execute("SELECT * FROM appointments WHERE id=%s", (appointment_id,))
+            query = """
+                SELECT a.*, p.name as provider_name, p.specialty as provider_specialty, p.experience_years as experience
+                FROM appointments a
+                LEFT JOIN providers p ON a.provider_id = p.id
+                WHERE a.id = %s
+            """
+            cur.execute(query, (appointment_id,))
             appt = cur.fetchone()
 
             if not appt:
                 raise HTTPException(404, "Appointment not found")
+
+            # Parse specialty if it's a string
+            if isinstance(appt.get('provider_specialty'), str):
+                try:
+                    appt['provider_specialty'] = json.loads(appt['provider_specialty'])
+                except:
+                    pass
 
             is_patient = appt['patient_id'] == user_id
             is_provider = False
