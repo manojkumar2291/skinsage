@@ -20,15 +20,15 @@ class ProviderService:
 
         languages_json = json.dumps(data.languages)
         specialty_json = json.dumps(data.specialty)
-        cur.execute("insert into users (full_name,email,phone,password_hash,role,dob,gender,language_pref,is_verified) values (%s,%s,%s,%s,%s,%s,%s,%s,%s)",
-         (data.name,data.email,data.phone,None,"provider",data.dob,data.gender,data.language_pref,True))
+        cur.execute("insert into users (full_name,email,phone,password_hash,role,dob,gender,language_pref,is_verified,profile_photo) values (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)",
+         (data.name,data.email,data.phone,None,"provider",data.dob,data.gender,data.language_pref,True, data.profile_photo))
         user_id = cur.lastrowid
       
         sql = """
             INSERT INTO providers 
             (user_id,name,email, license_number, verification_status, specialty, 
-             experience_years, languages, consultation_fee, bio, profile_photo)
-            VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s,%s)
+             experience_years, languages, consultation_fee, bio)
+            VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
         """
         
         values = (
@@ -41,8 +41,7 @@ class ProviderService:
             data.experience_years, 
             languages_json, 
             data.consultation_fee, 
-            data.bio, 
-            data.profile_photo
+            data.bio
         )
 
         cur.execute(sql, values)
@@ -89,7 +88,12 @@ class ProviderService:
     def get_provider_by_id(self, provider_id: int):
         conn = get_connection()
         cur = conn.cursor(dictionary=True)
-        cur.execute("SELECT * FROM providers WHERE id=%s", (provider_id,))
+        cur.execute("""
+            SELECT p.*, u.profile_photo 
+            FROM providers p 
+            JOIN users u ON p.user_id = u.id 
+            WHERE p.id=%s
+        """, (provider_id,))
         provider = cur.fetchone()
         
         if not provider:
@@ -115,7 +119,12 @@ class ProviderService:
         conn = get_connection()
         cur = conn.cursor(dictionary=True)
         
-        query = "SELECT * FROM providers WHERE 1=1"
+        query = """
+            SELECT p.*, u.profile_photo 
+            FROM providers p 
+            JOIN users u ON p.user_id = u.id 
+            WHERE 1=1
+        """
         params = []
         
         if name:
@@ -165,13 +174,6 @@ class ProviderService:
                     p['specialty'] = json.loads(p['specialty'])
                 except:
                     pass
-            
-            # fetch profile_image from users table
-            cur.execute("SELECT profile_photo FROM users WHERE id = %s", (p["user_id"],))
-            user = cur.fetchone()
-
-            if user and user.get("profile_photo"):
-                p["profile_photo"] = user["profile_photo"]
 
             if p.get("profile_photo") and not p["profile_photo"].startswith("http"):
                 p["profile_photo"] = f"{settings.BACKEND_URL}/{p['profile_photo']}"

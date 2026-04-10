@@ -7,11 +7,11 @@ services:
     environment:
       MYSQL_DATABASE: coolify_db
       MYSQL_USER: user
-      MYSQL_PASSWORD: ${DB_PASSWORD} 
+      MYSQL_PASSWORD: ${DB_PASSWORD}
       MYSQL_ROOT_PASSWORD: ${DB_ROOT_PASSWORD}
     command: --default-authentication-plugin=mysql_native_password
     volumes:
-      - db_data:/var/lib/mysql 
+      - db_data:/var/lib/mysql
 
   backend:
     build: .
@@ -24,8 +24,11 @@ services:
       - DB_PORT=3306
       - DB_USER=user
       - DB_NAME=coolify_db
-      # ⚠️ Use the same variable here so they match
       - DB_PASS=${DB_PASSWORD}
-    
+
+    # ✅ FIX: mount uploads here
+    volumes:
+      - ./uploads:uploads/
+
 volumes:
   db_data:
