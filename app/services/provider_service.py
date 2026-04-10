@@ -167,11 +167,11 @@ class ProviderService:
                     pass
             
             # fetch profile_image from users table
-            cur.execute("SELECT profile_image FROM users WHERE id = %s", (p["user_id"],))
+            cur.execute("SELECT profile_photo FROM users WHERE id = %s", (p["user_id"],))
             user = cur.fetchone()
 
-            if user and user.get("profile_image"):
-                p["profile_photo"] = user["profile_image"]
+            if user and user.get("profile_photo"):
+                p["profile_photo"] = user["profile_photo"]
 
             if not p["profile_photo"].startswith("http"):
                 p["profile_photo"] = f"{settings.BACKEND_URL}/{p['profile_photo']}"
