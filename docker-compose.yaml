@@ -28,7 +28,7 @@ services:
 
     # ✅ FIX: mount uploads here
     volumes:
-      - ./uploads:./uploads
+      - ./uploads:/app/uploads
 
 volumes:
   db_data:
