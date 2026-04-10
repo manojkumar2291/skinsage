@@ -27,9 +27,9 @@ services:
       - DB_PASS=${DB_PASSWORD}
 
     # ✅ FIX: mount uploads here
-    volumes:
-      - ./uploads:/app/uploads
+    # volumes:
+    #   - ./uploads:/app/uploads
 
 volumes:
   db_data:
-  uploads_data:
+  
