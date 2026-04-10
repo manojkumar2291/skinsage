@@ -128,36 +128,36 @@ class ProviderService:
         params = []
         
         if name:
-            query += " AND name LIKE %s"
+            query += " AND p.name LIKE %s"
             params.append(f"%{name}%")
             
         if specialty:
-            query += " AND specialty LIKE %s"
+            query += " AND p.specialty LIKE %s"
             params.append(f"%{specialty}%")
             
         if min_price:
-            query += " AND consultation_fee >= %s"
+            query += " AND p.consultation_fee >= %s"
             params.append(min_price)
             
         if max_price:
-            query += " AND consultation_fee <= %s"
+            query += " AND p.consultation_fee <= %s"
             params.append(max_price)
             
         if min_experience:
-            query += " AND experience_years >= %s"
+            query += " AND p.experience_years >= %s"
             params.append(min_experience)
             
         if availability == 'today':
-            query += " AND id IN (SELECT provider_id FROM appointment_slots WHERE is_available=1 AND is_booked=0 AND DATE(start_time) = CURDATE())"
+            query += " AND p.id IN (SELECT provider_id FROM appointment_slots WHERE is_available=1 AND is_booked=0 AND DATE(start_time) = CURDATE())"
         elif availability == 'tomorrow':
-            query += " AND id IN (SELECT provider_id FROM appointment_slots WHERE is_available=1 AND is_booked=0 AND DATE(start_time) = CURDATE() + INTERVAL 1 DAY)"
+            query += " AND p.id IN (SELECT provider_id FROM appointment_slots WHERE is_available=1 AND is_booked=0 AND DATE(start_time) = CURDATE() + INTERVAL 1 DAY)"
         elif availability == 'this_week':
-            query += " AND id IN (SELECT provider_id FROM appointment_slots WHERE is_available=1 AND is_booked=0 AND YEARWEEK(start_time, 1) = YEARWEEK(CURDATE(), 1))"
+            query += " AND p.id IN (SELECT provider_id FROM appointment_slots WHERE is_available=1 AND is_booked=0 AND YEARWEEK(start_time, 1) = YEARWEEK(CURDATE(), 1))"
         elif availability == 'this_month':
-            query += " AND id IN (SELECT provider_id FROM appointment_slots WHERE is_available=1 AND is_booked=0 AND YEAR(start_time) = YEAR(CURDATE()) AND MONTH(start_time) = MONTH(CURDATE()))"
+            query += " AND p.id IN (SELECT provider_id FROM appointment_slots WHERE is_available=1 AND is_booked=0 AND YEAR(start_time) = YEAR(CURDATE()) AND MONTH(start_time) = MONTH(CURDATE()))"
         elif availability:
             # Assume availability is a specific date string, e.g. 'YYYY-MM-DD'
-            query += " AND id IN (SELECT provider_id FROM appointment_slots WHERE is_available=1 AND is_booked=0 AND DATE(start_time) = %s)"
+            query += " AND p.id IN (SELECT provider_id FROM appointment_slots WHERE is_available=1 AND is_booked=0 AND DATE(start_time) = %s)"
             params.append(availability)
             
         query += " LIMIT %s OFFSET %s"
