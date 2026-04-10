@@ -173,7 +173,7 @@ class ProviderService:
             if user and user.get("profile_photo"):
                 p["profile_photo"] = user["profile_photo"]
 
-            if not p["profile_photo"].startswith("http"):
+            if p.get("profile_photo") and not p["profile_photo"].startswith("http"):
                 p["profile_photo"] = f"{settings.BACKEND_URL}/{p['profile_photo']}"
 
         return providers
