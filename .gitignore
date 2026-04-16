@@ -30,3 +30,8 @@ test
 # If 'skinsagetablesdata.sql' contains real user data, ignore it:
 skinsagetablesdata.sql
 nginx
+node_modules/
+frontend-tests/node_modules/
+frontend-tests/node_modules/
+frontend-tests/playwright-report/
+frontend-tests/test-results/
