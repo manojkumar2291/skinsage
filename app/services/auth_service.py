@@ -61,7 +61,20 @@ class AuthService:
         if not user or not verify_password(data.password, user["password_hash"]):
             raise HTTPException(400, "Invalid email or password")
 
-        access = create_access_token({"id": user["id"], "email": user["email"], "role": user["role"]})
+        provider_id = None
+        if user["role"] == "provider":
+        cur.execute("SELECT id FROM providers WHERE user_id = %s", (user["id"],))
+        provider_record = cur.fetchone()
+        if provider_record:
+            provider_id = provider_record["id"]
+
+        token_payload = {
+            "id": user["id"], 
+            "email": user["email"], 
+            "role": user["role"],
+            "provider_id": provider_id
+        }
+        access = create_access_token(token_payload)
         refresh = create_refresh_token({"id": user["id"]})
 
         cur.execute("UPDATE users SET refresh_token=%s WHERE id=%s", (refresh, user["id"]))
@@ -77,6 +90,7 @@ class AuthService:
             "profile_complete": is_complete,
             "user": {
                 "id": user["id"],
+                "provider_id": provider_id, # Included here as requested
                 "email": user["email"],
                 "full_name": user["full_name"],
                 "role": user["role"],
