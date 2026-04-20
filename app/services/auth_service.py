@@ -63,10 +63,10 @@ class AuthService:
 
         provider_id = None
         if user["role"] == "provider":
-        cur.execute("SELECT id FROM providers WHERE user_id = %s", (user["id"],))
-        provider_record = cur.fetchone()
-        if provider_record:
-            provider_id = provider_record["id"]
+            cur.execute("SELECT id FROM providers WHERE user_id = %s", (user["id"],))
+            provider_record = cur.fetchone()
+            if provider_record:
+                provider_id = provider_record["id"]
 
         token_payload = {
             "id": user["id"], 
