@@ -186,6 +186,7 @@ class AuthService:
         headers = {'Authorization': f'Bearer {token}'}
         
         try:
+            print("Token:", token)
             resp = http_requests.get(graph_url, headers=headers)
 
             print("Status:", resp.status_code)
