@@ -189,8 +189,8 @@ class AuthService:
         token_url = "https://login.microsoftonline.com/common/oauth2/v2.0/token"
 
         token_data = {
-        "client_id": settings.MS_CLIENT_ID,
-        "client_secret": settings.MS_CLIENT_SECRET,
+        "client_id": settings.MICROSOFT_CLIENT_ID,
+        "client_secret": settings.MICROSOFT_CLIENT_SECRET,
         "code": token,  # <-- this is your incoming "token" (actually code)
         "redirect_uri": settings.MS_REDIRECT_URI,
         "grant_type": "authorization_code",
