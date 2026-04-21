@@ -1,7 +1,7 @@
 from fastapi import HTTPException, Depends
 from google.oauth2 import id_token
 from google.auth.transport import requests as google_request
-import requests as http_requests
+import requests 
 import secrets
 from datetime import datetime
 from app.schemas.auth import RegisterSchema, LoginSchema, CompleteProfileSchema, ConsentUpdateSchema
