@@ -64,7 +64,9 @@ class Settings(BaseSettings):
     ENCRYPTION_KEY: str
     
     MICROSOFT_CLIENT_ID: str = "optional_default" # .env usually
-    MICROSOFT_TENANT_ID: str = "common" # .env usually
+    # MICROSOFT_TENANT_ID: str = "common" # .env usually
+    MICROSOFT_CLIENT_SECRET:str
+    MICROSOFT_REDIRECT_URI:str
 
 
     AGORA_APP_CERTIFICATE: str  # .env

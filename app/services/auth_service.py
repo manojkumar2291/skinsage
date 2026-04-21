@@ -192,7 +192,7 @@ class AuthService:
         "client_id": settings.MICROSOFT_CLIENT_ID,
         "client_secret": settings.MICROSOFT_CLIENT_SECRET,
         "code": token,  # <-- this is your incoming "token" (actually code)
-        "redirect_uri": settings.MS_REDIRECT_URI,
+        "redirect_uri": settings.MICROSOFT_REDIRECT_URI,
         "grant_type": "authorization_code",
         "scope": "User.Read"
         }
