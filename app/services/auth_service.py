@@ -180,17 +180,60 @@ class AuthService:
             }
         }
 
-    def microsoft_login(self, token: str):
-        # 1. Verify Token with Microsoft Graph API
-        graph_url = "https://graph.microsoft.com/v1.0/me"
-        headers = {'Authorization': f'Bearer {token}'}
-        
-        try:
-            print("Token:", token)
-            resp = http_requests.get(graph_url, headers=headers)
 
-            print("Status:", resp.status_code)
-            print("Response:", resp.text)
+
+    def microsoft_login(self, token: str):
+    # ----------------------------------
+    # 1. Exchange AUTHORIZATION CODE → ACCESS TOKEN
+    # ----------------------------------
+        token_url = "https://login.microsoftonline.com/common/oauth2/v2.0/token"
+
+        token_data = {
+        "client_id": settings.MS_CLIENT_ID,
+        "client_secret": settings.MS_CLIENT_SECRET,
+        "code": token,  # <-- this is your incoming "token" (actually code)
+        "redirect_uri": settings.MS_REDIRECT_URI,
+        "grant_type": "authorization_code",
+        "scope": "User.Read"
+        }
+
+        try:
+            token_resp = requests.post(
+                token_url,
+                data=token_data,
+                headers={"Content-Type": "application/x-www-form-urlencoded"}
+            )
+
+            print("Token Exchange Status:", token_resp.status_code)
+            print("Token Exchange Response:", token_resp.text)
+
+            if token_resp.status_code != 200:
+                raise HTTPException(
+                    status_code=400,
+                    detail=f"Failed to exchange code: {token_resp.text}"
+                )
+
+            token_json = token_resp.json()
+            access_token = token_json.get("access_token")
+
+            if not access_token:
+                raise HTTPException(400, "No access token received from Microsoft")
+
+        except Exception as e:
+            print("Token Exchange Error:", e)
+            raise HTTPException(400, "Microsoft token exchange failed")
+
+        # ----------------------------------
+        # 2. CALL MICROSOFT GRAPH API
+        # ----------------------------------
+        graph_url = "https://graph.microsoft.com/v1.0/me"
+        headers = {"Authorization": f"Bearer {access_token}"}
+
+        try:
+            resp = requests.get(graph_url, headers=headers)
+
+            print("Graph Status:", resp.status_code)
+            print("Graph Response:", resp.text)
 
             if resp.status_code != 200:
                 raise HTTPException(
@@ -202,52 +245,70 @@ class AuthService:
 
         except Exception as e:
             print(f"Microsoft Auth Error: {e}")
-            raise HTTPException(400, str(e))
-        # 2. Extract User Info
+            raise HTTPException(400, "Failed to verify Microsoft token")
+
+        # ----------------------------------
+        # 3. EXTRACT USER INFO
+        # ----------------------------------
         email = ms_user.get("mail") or ms_user.get("userPrincipalName")
         fullname = ms_user.get("displayName", "Microsoft User")
         ms_id = ms_user.get("id")
 
         if not email:
-             raise HTTPException(400, "Microsoft account verification failed: No email found")
+            raise HTTPException(400, "Microsoft account verification failed: No email found")
 
         conn = get_connection()
         cur = conn.cursor(dictionary=True)
 
-        # 3. Check/Create User
-        # Check by email OR user_oauth
-        cur.execute("SELECT u.* FROM users u LEFT JOIN user_oauth o ON u.id = o.user_id WHERE u.email=%s OR (o.provider='microsoft' AND o.provider_id=%s)", (email, ms_id))
-        user = cur.fetchone()
+        # ----------------------------------
+        # 4. CHECK / CREATE USER
+        # ----------------------------------
+        cur.execute("""
+            SELECT u.* FROM users u 
+            LEFT JOIN user_oauth o ON u.id = o.user_id 
+            WHERE u.email=%s 
+            OR (o.provider='microsoft' AND o.provider_id=%s)
+        """, (email, ms_id))
 
+        user = cur.fetchone()
         profile_complete = False
 
         if not user:
-            # Create new user
-            # Generate a random, unusable password and hash it
+            import secrets
             random_password = secrets.token_urlsafe(32)
             hashed_password = hash_password(random_password)
-            
+
             cur.execute("""
                 INSERT INTO users 
                 (full_name, email, password_hash, is_verified, role)
                 VALUES (%s, %s, %s, %s, %s)
             """, (fullname, email, hashed_password, True, "patient"))
-            
+
             conn.commit()
-            
-            # Fetch the new user
+
             cur.execute("SELECT * FROM users WHERE email=%s", (email,))
             user = cur.fetchone()
-            
-            cur.execute("INSERT INTO user_oauth (user_id, provider, provider_id) VALUES (%s, %s, %s)", (user['id'], 'microsoft', ms_id))
+
+            cur.execute("""
+                INSERT INTO user_oauth (user_id, provider, provider_id) 
+                VALUES (%s, %s, %s)
+            """, (user['id'], 'microsoft', ms_id))
+
             conn.commit()
+
         else:
-             # Update user_oauth if missing (linking accounts)
-            cur.execute("SELECT id FROM user_oauth WHERE user_id=%s AND provider='microsoft'", (user['id'],))
+            cur.execute("""
+                SELECT id FROM user_oauth 
+                WHERE user_id=%s AND provider='microsoft'
+            """, (user['id'],))
+
             if not cur.fetchone():
-                 cur.execute("INSERT INTO user_oauth (user_id, provider, provider_id) VALUES (%s, %s, %s)", (user['id'], 'microsoft', ms_id))
-                 conn.commit()
-            
+                cur.execute("""
+                    INSERT INTO user_oauth (user_id, provider, provider_id) 
+                    VALUES (%s, %s, %s)
+                """, (user['id'], 'microsoft', ms_id))
+                conn.commit()
+
             profile_complete = all([
                 user.get("phone"),
                 user.get("dob"),
@@ -255,17 +316,26 @@ class AuthService:
                 user.get("language_pref")
             ])
 
-        # 4. Generate Tokens
+        # ----------------------------------
+        # 5. GENERATE YOUR TOKENS
+        # ----------------------------------
         access = create_access_token({
-            "id": user["id"], 
-            "email": user["email"], 
+            "id": user["id"],
+            "email": user["email"],
             "role": user.get("role", "patient")
         })
+
         refresh = create_refresh_token({"id": user["id"]})
 
-        cur.execute("UPDATE users SET refresh_token=%s WHERE id=%s", (refresh, user["id"]))
+        cur.execute(
+            "UPDATE users SET refresh_token=%s WHERE id=%s",
+            (refresh, user["id"])
+        )
         conn.commit()
 
+        # ----------------------------------
+        # 6. RETURN RESPONSE
+        # ----------------------------------
         return {
             "access_token": access,
             "refresh_token": refresh,
@@ -280,7 +350,6 @@ class AuthService:
                 "profile_complete": profile_complete
             }
         }
-
     def refresh_tokens(self, refresh_token: str):
         payload = verify_token(refresh_token)
         if not payload:
