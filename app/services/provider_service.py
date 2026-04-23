@@ -119,20 +119,10 @@ class ProviderService:
         conn = get_connection()
         cur = conn.cursor(dictionary=True)
         
+        
+        
         query = """
-            SELECT 
-                u.id AS id,
-                p.id AS provider_id,
-                p.name,
-                p.email,
-                p.license_number,
-                p.specialty,
-                p.verification_status,
-                p.experience_years,
-                p.languages,
-                p.consultation_fee,
-                p.bio,
-                u.profile_photo
+            SELECT p.*, u.profile_photo 
             FROM providers p 
             JOIN users u ON p.user_id = u.id 
             WHERE 1=1

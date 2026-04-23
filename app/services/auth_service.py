@@ -155,10 +155,18 @@ class AuthService:
                 user.get("language_pref")
             ])
 
+        provider_id = None
+        if user["role"] == "provider":
+            cur.execute("SELECT id FROM providers WHERE user_id = %s", (user["id"],))
+            provider_record = cur.fetchone()
+            if provider_record:
+                provider_id = provider_record["id"]
+
         access = create_access_token({
             "id": user["id"], 
             "email": user["email"], 
-            "role": user.get("role", "patient")
+            "role": user.get("role", "patient"),
+            "provider_id": provider_id
         })
         refresh = create_refresh_token({"id": user["id"]})
 
@@ -172,6 +180,7 @@ class AuthService:
             "profile_complete": profile_complete,
             "user": {
                 "id": user["id"],
+                "provider_id": provider_id,
                 "email": user["email"],
                 "full_name": user["full_name"],
                 "role": user["role"],
@@ -316,13 +325,21 @@ class AuthService:
                 user.get("language_pref")
             ])
 
+        provider_id = None
+        if user["role"] == "provider":
+            cur.execute("SELECT id FROM providers WHERE user_id = %s", (user["id"],))
+            provider_record = cur.fetchone()
+            if provider_record:
+                provider_id = provider_record["id"]
+
         # ----------------------------------
         # 5. GENERATE YOUR TOKENS
         # ----------------------------------
         access = create_access_token({
             "id": user["id"],
             "email": user["email"],
-            "role": user.get("role", "patient")
+            "role": user.get("role", "patient"),
+            "provider_id": provider_id
         })
 
         refresh = create_refresh_token({"id": user["id"]})
@@ -343,6 +360,7 @@ class AuthService:
             "profile_complete": profile_complete,
             "user": {
                 "id": user["id"],
+                "provider_id": provider_id,
                 "email": user["email"],
                 "full_name": user["full_name"],
                 "role": user["role"],
@@ -365,7 +383,19 @@ class AuthService:
         if not user or user.get("refresh_token") != refresh_token:
             raise HTTPException(401, "Invalid refresh token")
 
-        access = create_access_token({"id": user["id"], "email": user["email"], "role": user.get("role")})
+        provider_id = None
+        if user["role"] == "provider":
+            cur.execute("SELECT id FROM providers WHERE user_id = %s", (user["id"],))
+            provider_record = cur.fetchone()
+            if provider_record:
+                provider_id = provider_record["id"]
+
+        access = create_access_token({
+            "id": user["id"], 
+            "email": user["email"], 
+            "role": user.get("role"),
+            "provider_id": provider_id
+        })
         new_refresh = create_refresh_token({"id": user["id"]})
 
         cur.execute("UPDATE users SET refresh_token=%s WHERE id=%s", (new_refresh, user["id"]))
@@ -377,6 +407,7 @@ class AuthService:
             "token_type": "bearer",
             "user": {
                 "id": user["id"],
+                "provider_id": provider_id,
                 "email": user["email"],
                 "full_name": user.get("full_name"), 
                 "role": user["role"],
