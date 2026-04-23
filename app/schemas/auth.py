@@ -64,6 +64,7 @@ class ConsentUpdateSchema(BaseModel):
 
 class UserResponse(BaseModel):
     id: int
+    provider_id: Optional[int] = None
     email: str
     full_name: Optional[str]
     role: Optional[str]
