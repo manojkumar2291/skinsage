@@ -92,7 +92,7 @@ class ProviderService:
             SELECT p.*, u.profile_photo 
             FROM providers p 
             JOIN users u ON p.user_id = u.id 
-            WHERE u.id=%s
+            WHERE p.id=%s
         """, (provider_id,))
         provider = cur.fetchone()
         
