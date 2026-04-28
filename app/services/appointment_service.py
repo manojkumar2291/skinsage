@@ -1,7 +1,7 @@
 import asyncio
 import json
 from fastapi import HTTPException, BackgroundTasks
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from typing import Optional
 from zoneinfo import ZoneInfo
 import mysql.connector
@@ -183,6 +183,9 @@ class AppointmentService:
                         appt['provider_specialty'] = json.loads(appt['provider_specialty'])
                     except:
                         pass
+                for field in ['preferred_slot', 'confirmed_slot', 'created_at']:
+                    if appt.get(field) and isinstance(appt[field], datetime):
+                        appt[field] = appt[field].replace(tzinfo=timezone.utc)
             return result
         finally:
             cur.close()
@@ -212,6 +215,10 @@ class AppointmentService:
                     appt['provider_specialty'] = json.loads(appt['provider_specialty'])
                 except:
                     pass
+
+            for field in ['preferred_slot', 'confirmed_slot', 'created_at']:
+                if appt.get(field) and isinstance(appt[field], datetime):
+                    appt[field] = appt[field].replace(tzinfo=timezone.utc)
 
             is_patient = appt['patient_id'] == user_id
             is_provider = False
@@ -371,7 +378,7 @@ class AppointmentService:
                 if isinstance(appointment_time, str):
                     appointment_time = datetime.strptime(appointment_time, '%Y-%m-%d %H:%M:%S')
                 
-                current_time = datetime.now()
+                current_time = datetime.now(timezone.utc).replace(tzinfo=None)
                 time_difference = appointment_time - current_time
 
                 if time_difference < timedelta(hours=2):

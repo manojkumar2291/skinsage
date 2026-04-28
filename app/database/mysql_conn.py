@@ -17,6 +17,9 @@ def get_db_connection():
             user=settings.DB_USER,
             password=settings.DB_PASSWORD
         )
+        cur = conn.cursor()
+        cur.execute("SET time_zone = '+00:00'")
+        cur.close()
         return conn
     except MySQLDBError as e:
         logger.error(f"Error connecting to MySQL database: {e}")

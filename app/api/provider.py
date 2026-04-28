@@ -3,7 +3,7 @@ from app.core.config import settings
 from typing import List,Optional
 from decimal import Decimal
 from app.schemas.provider import ProviderCreate, ProviderResponse , ProviderUpdate, SlotGenerationRequest, SlotUpdateRequest, SlotResponse, AdminVerifyProvider
-from datetime import datetime, date, time, timedelta
+from datetime import datetime, date, time, timedelta, timezone
 from app.services.provider_service import ProviderService 
 from app.core.deps import role_required ,get_current_user# Import your role checker
 from app.database.mysql_conn import get_db_connection as get_db
@@ -98,8 +98,8 @@ def update_slots(
         {
             "id": row[0],
             "provider_id": row[1],
-            "start_time": row[2],
-            "end_time": row[3],
+            "start_time": row[2].replace(tzinfo=timezone.utc) if isinstance(row[2], datetime) else row[2],
+            "end_time": row[3].replace(tzinfo=timezone.utc) if isinstance(row[3], datetime) else row[3],
             "is_available": bool(row[4]), # Ensure boolean for JSON
             "is_booked": bool(row[5])
         } for row in updated_rows
@@ -146,8 +146,8 @@ def get_provider_slots(
         {
             "id": row[0],
             "provider_id": row[1],
-            "start_time": row[2],
-            "end_time": row[3],
+            "start_time": row[2].replace(tzinfo=timezone.utc) if isinstance(row[2], datetime) else row[2],
+            "end_time": row[3].replace(tzinfo=timezone.utc) if isinstance(row[3], datetime) else row[3],
             "is_available": bool(row[4]),
             "is_booked": bool(row[5])
         } for row in rows
