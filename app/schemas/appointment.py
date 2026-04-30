@@ -23,11 +23,22 @@ class AppointmentUpdate(BaseModel):
     confirmed_slot: Optional[datetime] = None
     
 
+class PatientInfo(BaseModel):
+    id: int
+    name: Optional[str] = None
+    dob: Optional[date] = None
+    gender: Optional[str] = None
+    phone: Optional[str] = None
+    photo: Optional[str] = None
+
 # OUTPUT: API Response
 class AppointmentResponse(BaseModel):
     id: int
     case_id: Optional[int]= None
-    patient_id: int
+    patient: Optional[PatientInfo] = None
+    case_title: Optional[str] = None
+    case_symptoms: Optional[str] = None
+    case_status: Optional[str] = None
     provider_id: int
     provider_name: Optional[str] = None
     provider_specialty: Optional[Union[List[str], str]] = None

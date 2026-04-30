@@ -151,9 +151,14 @@ class AppointmentService:
 
         try:
             query = """
-                SELECT a.*, p.name as provider_name, p.specialty as provider_specialty, p.experience_years as experience
+                SELECT a.*, 
+                       p.name as provider_name, p.specialty as provider_specialty, p.experience_years as experience,
+                       u.full_name as patient_name, u.dob as patient_dob, u.gender as patient_gender, u.phone as patient_phone, u.profile_photo as patient_photo,
+                       c.title as case_title, c.symptoms as case_symptoms, c.status as case_status
                 FROM appointments a
                 LEFT JOIN providers p ON a.provider_id = p.id
+                LEFT JOIN users u ON a.patient_id = u.id
+                LEFT JOIN cases c ON a.case_id = c.id
                 WHERE 1=1
             """
             params = []
@@ -178,6 +183,14 @@ class AppointmentService:
             result = cur.fetchall()
 
             for appt in result:
+                appt['patient'] = {
+                    'id': appt.get('patient_id'),
+                    'name': appt.get('patient_name'),
+                    'dob': appt.get('patient_dob'),
+                    'gender': appt.get('patient_gender'),
+                    'phone': appt.get('patient_phone'),
+                    'photo': appt.get('patient_photo')
+                }
                 if isinstance(appt.get('provider_specialty'), str):
                     try:
                         appt['provider_specialty'] = json.loads(appt['provider_specialty'])
@@ -198,9 +211,14 @@ class AppointmentService:
 
         try:
             query = """
-                SELECT a.*, p.name as provider_name, p.specialty as provider_specialty, p.experience_years as experience
+                SELECT a.*, 
+                       p.name as provider_name, p.specialty as provider_specialty, p.experience_years as experience,
+                       u.full_name as patient_name, u.dob as patient_dob, u.gender as patient_gender, u.phone as patient_phone, u.profile_photo as patient_photo,
+                       c.title as case_title, c.symptoms as case_symptoms, c.status as case_status
                 FROM appointments a
                 LEFT JOIN providers p ON a.provider_id = p.id
+                LEFT JOIN users u ON a.patient_id = u.id
+                LEFT JOIN cases c ON a.case_id = c.id
                 WHERE a.id = %s
             """
             cur.execute(query, (appointment_id,))
@@ -208,6 +226,15 @@ class AppointmentService:
 
             if not appt:
                 raise HTTPException(404, "Appointment not found")
+
+            appt['patient'] = {
+                'id': appt.get('patient_id'),
+                'name': appt.get('patient_name'),
+                'dob': appt.get('patient_dob'),
+                'gender': appt.get('patient_gender'),
+                'phone': appt.get('patient_phone'),
+                'photo': appt.get('patient_photo')
+            }
 
             # Parse specialty if it's a string
             if isinstance(appt.get('provider_specialty'), str):
