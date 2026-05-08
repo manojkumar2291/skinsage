@@ -155,7 +155,7 @@ class AppointmentService:
                        p.name as provider_name, p.specialty as provider_specialty, p.experience_years as experience,
                        u.full_name as patient_name, u.dob as patient_dob, u.gender as patient_gender, u.phone as patient_phone, u.profile_photo as patient_photo,
                        c.title as case_title, c.symptoms as case_symptoms, c.status as case_status,
-                       ai.ai_response as ai_chat_response
+                       ai.ai_response as ai_chat_response, ai.input_text as ai_chat_input
                 FROM appointments a
                 LEFT JOIN providers p ON a.provider_id = p.id
                 LEFT JOIN users u ON a.patient_id = u.id
@@ -217,7 +217,7 @@ class AppointmentService:
                        p.name as provider_name, p.specialty as provider_specialty, p.experience_years as experience,
                        u.full_name as patient_name, u.dob as patient_dob, u.gender as patient_gender, u.phone as patient_phone, u.profile_photo as patient_photo,
                        c.title as case_title, c.symptoms as case_symptoms, c.status as case_status,
-                       ai.ai_response as ai_chat_response
+                       ai.ai_response as ai_chat_response, ai.input_text as ai_chat_input
                 FROM appointments a
                 LEFT JOIN providers p ON a.provider_id = p.id
                 LEFT JOIN users u ON a.patient_id = u.id
