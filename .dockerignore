@@ -1,0 +1,8 @@
+uploads
+__pycache__
+.env
+venv
+.idea
+.vscode
+.pytest_cache
+.tox
