@@ -39,6 +39,8 @@ class AppointmentResponse(BaseModel):
     case_title: Optional[str] = None
     case_symptoms: Optional[str] = None
     case_status: Optional[str] = None
+    ai_chat_response: Optional[str] = None
+    ai_chat_input: Optional[str] = None
     provider_id: int
     provider_name: Optional[str] = None
     provider_specialty: Optional[Union[List[str], str]] = None

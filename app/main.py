@@ -2,13 +2,17 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from pathlib import Path
+from app.core.config import settings
 
 
 
 app = FastAPI(
     title="SkinSage API",
     version="1.0",
-    description="Unified Backend for Authentication and AI Analysis"
+    description="Unified Backend for Authentication and AI Analysis",
+    docs_url=None if settings.ENVIRONMENT == "production" else "/docs",
+    redoc_url=None if settings.ENVIRONMENT == "production" else "/redoc",
+    openapi_url=None if settings.ENVIRONMENT == "production" else "/openapi.json"
 )
 
 # rate limiting
@@ -42,7 +46,6 @@ from app.api.user import router as user_router
 from apscheduler.schedulers.background import BackgroundScheduler
 from app.services.remainder_service import send_reminder_emails
 from app.api.content import router as content_router
-from app.core.config import settings
 
 # shoping cart routes
 from app.api.shop import router as shop_router

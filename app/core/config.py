@@ -22,6 +22,8 @@ class Settings(BaseSettings):
     # Configure Pydantic to look for .env file in the project root
     model_config = SettingsConfigDict(env_file=os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(__file__))), '.env'), extra='ignore')
 
+    ENVIRONMENT: str = "development"
+
     # LLM Settings
     OPENROUTER_API_KEY: str
     MODEL_NAME: str = "openai/gpt-4o-mini"
